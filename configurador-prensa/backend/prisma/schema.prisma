@@ -1,0 +1,116 @@
+// ============================================================
+// Esquema de base de datos (Prisma) — configurador de prensa
+//
+// Este archivo es la "fuente de la verdad" del modelo de datos.
+// Cada bloque "model" se traduce a una tabla SQL y cada campo a
+// una columna. Al ejecutar `npx prisma migrate dev` Prisma genera
+// una migración SQL a partir de este esquema.
+//
+// Relaciones principales:
+//   User 1───N Machine
+//   Machine 1───N MachineVersion  (versionado del diseño)
+//   MachineVersion 1───N BomItem  (lista de materiales por versión)
+//   Piece 1───N BomItem           (el mismo componente puede estar en muchos BOMs)
+// ============================================================
+
+// ---- Conector: PostgreSQL (fuente de conexión en .env) ----
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---- Generador: cliente JavaScript/TypeScript ----
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ============================================================
+// USERS — usuarios registrados (autenticación JWT)
+// ============================================================
+model User {
+  id           String    @id @default(cuid()) // identificador único generado
+  email        String    @unique               // email único (login)
+  passwordHash String    // hash bcrypt de la contraseña (NUNCA texto plano)
+  name         String?   // nombre visible (opcional)
+  machines     Machine[] // un usuario puede tener muchas máquinas diseñadas
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+// ============================================================
+// PIECES — catálogo de componentes (las "piezas" del configurador)
+// ============================================================
+model Piece {
+  id        String   @id @default(cuid())
+  slug      String   @unique          // identificador legible: "tubo_60x60x3"
+  name      String                     // nombre comercial: "Tubo cuadrado 60x60x3"
+  category  String                     // "tubo" | "chapa" | "polea" | "rodamiento" | "asiento" ...
+  material  String                     // "Acero S355" ...
+  weightKg  Float    @default(0)       // masa por unidad (para BOM y futura simulación)
+  priceEur  Float    @default(0)       // precio unitario (para BOM)
+  dimensions Json                     // medidas útiles cargadas en la BD
+  geometry  Json                      // forma 3D: { tipo, color }
+  bomItems  BomItem[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+}
+
+// ============================================================
+// MACHINES — diseños guardados (una "prensa" configurada)
+//
+// sessionId es un UUID generado en el FRONTEND. Sirve como "sala"
+// de colaboración para Socket.io: dos clientes con el mismo
+// sessionId editan el mismo diseño en tiempo real.
+// ============================================================
+model Machine {
+  id           String           @id @default(cuid())
+  sessionId    String           @unique // sala de colaboración en tiempo real
+  name         String                    // nombre del diseño: "DisPro Pro 45°"
+  user         User?            @relation(fields: [userId], references: [id])
+  userId       String?                   // null si el diseño se guarda sin login
+  versions     MachineVersion[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([userId])
+}
+
+// ============================================================
+// MACHINE_VERSIONS — versionado del diseño
+// Cada vez que se pulsa "Guardar" se crea una VERSIÓN nueva con el
+// diseño completo (JSON) y su BOM. Permite volver atrás.
+// ============================================================
+model MachineVersion {
+  id         String      @id @default(cuid())
+  machine    Machine     @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  machineId  String
+  version    Int                     // 1, 2, 3... (autoincremental por máquina)
+  designData Json                    // piezas + transformaciones: [{ pieceId, cantidad, transform }]
+  bomTotal   Float    @default(0)    // total económico del BOM de esta versión
+  bomItems   BomItem[]
+  createdAt  DateTime    @default(now())
+
+  // Una máquina no puede tener dos versiones iguales
+  @@unique([machineId, version])
+}
+
+// ============================================================
+// BOM_ITEMS — lista de materiales (fila del BOM)
+// 1 registro por (versión, pieza). Se calcula al guardar (servicio bom.js)
+// y se lee directamente en GET /api/machines/:id/bom
+// ============================================================
+model BomItem {
+  id               String          @id @default(cuid())
+  version          MachineVersion  @relation(fields: [machineVersionId], references: [id], onDelete: Cascade)
+  machineVersionId String
+  piece            Piece           @relation(fields: [pieceId], references: [id])
+  pieceId          String
+  quantity         Int                          // nº de unidades de esa pieza
+  unitPrice        Float                        // precio unitario copiado al guardar
+  lineTotal        Float                        // unitPrice * quantity
+
+  // Una misma pieza solo aparece una vez por versión
+  @@unique([machineVersionId, pieceId])
+}

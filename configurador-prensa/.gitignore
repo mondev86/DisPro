@@ -1,0 +1,37 @@
+# ============================================================
+# .gitignore — archivos que NO deben subirse a Git
+# (dependencias, variables de entorno secretas, build, etc.)
+# ============================================================
+
+# Node.js
+node_modules/
+
+# Entornos y secretos (NUNCA subir el .env real)
+.env
+.env.local
+.env.*.local
+
+# Archivos generados por Prisma
+backend/prisma/dev.db
+backend/prisma/migrations/dev.db-journal
+
+# Builds
+frontend/dist/
+dist/
+backend/dist/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Tests / cobertura
+coverage/
+.nyc_output/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+.DS_Store

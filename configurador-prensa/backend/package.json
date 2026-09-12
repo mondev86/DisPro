@@ -1,0 +1,55 @@
+{
+  "name": "configurador-prensa-backend",
+  "version": "1.0.0",
+  "description": "API REST + WebSockets de DisPro (configurador 3D de máquinas de gimnasio)",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "migrate": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
+    "seed": "node prisma/seed.js",
+    "studio": "prisma studio",
+    "lint": "eslint src prisma test --max-warnings 0",
+    "lint:fix": "eslint src prisma test --fix",
+    "format": "prettier --write src prisma test",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "docker:build": "docker build -t configurador-prensa-backend .",
+    "docker:run": "docker run -p 4000:4000 --env-file ../.env configurador-prensa-backend"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "configurador",
+    "3d",
+    "dispro",
+    "gimnasio",
+    "bom",
+    "socket.io",
+    "prisma"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "jsonwebtoken": "^9.0.2",
+    "socket.io": "^4.8.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.16.0",
+    "eslint": "^9.16.0",
+    "eslint-config-prettier": "^9.1.0",
+    "globals": "^15.13.0",
+    "nodemon": "^3.1.7",
+    "prettier": "^3.4.1",
+    "prisma": "^5.22.0",
+    "supertest": "^7.0.0",
+    "vitest": "^2.1.8"
+  }
+}

@@ -1,0 +1,14 @@
+# ============================================================
+# .dockerignore (backend) — qué NO se copia al construir la imagen
+# (menos contexto = builds más rápidos y seguros)
+# ============================================================
+
+node_modules
+.env
+.env.*
+npm-debug.log*
+coverage
+dist
+.git
+.gitignore
+README.md

@@ -1,0 +1,13 @@
+# ============================================================
+# .dockerignore (frontend) — qué NO se copia a la imagen
+# ============================================================
+
+node_modules
+dist
+.env
+.env.*
+.npm
+coverage
+.git
+.gitignore
+README.md

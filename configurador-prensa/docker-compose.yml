@@ -1,0 +1,77 @@
+# ============================================================
+# docker-compose.yml — entorno local completo
+# Levanta: PostgreSQL + Backend (API + Socket.io) + Frontend (opcional)
+#
+#   docker compose up -d             → levanta todo
+#   docker compose up -d db          → solo la base de datos
+#   docker compose down              → apaga todo
+#   docker compose down -v           → apaga y borra los volúmenes (datos)
+# ============================================================
+
+services:
+  # ---------------------------------------------------------
+  # Base de datos PostgreSQL
+  # ---------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    container_name: prensa_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-configurador_prensa}
+      POSTGRES_USER: ${POSTGRES_USER:-prensa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-prensa_dev_password}
+    ports:
+      # host:contenedor → expone 5432 en localhost para Prisma CLI / psql
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # Comprueba que Postgres acepta conexiones antes de marcar el servicio "healthy"
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-prensa} -d ${POSTGRES_DB:-configurador_prensa}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ---------------------------------------------------------
+  # Backend: Express + Socket.io sobre Node.js
+  # ---------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: prensa_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        # Espera a que Postgres esté sano antes de arrancar el backend
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-prensa}:${POSTGRES_PASSWORD:-prensa_dev_password}@db:5432/${POSTGRES_DB:-configurador_prensa}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_no_usar_en_produccion}
+      PORT: 4000
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:80}
+    ports:
+      - "4000:4000"
+    # En arranque: aplica migraciones pendientes y después arranca la API.
+    # (migrate deploy = aplica solo migraciones existentes, nunca genera nuevas)
+    command: sh -c "npx prisma migrate deploy && node src/server.js"
+
+  # ---------------------------------------------------------
+  # Frontend: React (Vite) servido con nginx (opcional)
+  # Compila el bundle en build time y lo sirve en el puerto 80.
+  # ---------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: prensa_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    # nginx redirige /api y /socket.io hacia el backend (ver frontend/nginx.conf)
+
+volumes:
+  # Volumen persistente de la base de datos (sobrevive a `compose down`)
+  pgdata:

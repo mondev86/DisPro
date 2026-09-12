@@ -1,0 +1,179 @@
+/* ============================================================
+   src/index.css — estilos globales (CSS plano, sin dependencias)
+   Layout del configurador en 3 columnas con grid:
+      [catálogo] [canvas 3D] [parámetros]
+   ============================================================ */
+
+:root {
+  --fondo: #12141a;
+  --panel: #1c1f28;
+  --borde: #2c303c;
+  --texto: #e6e8ee;
+  --muted: #9aa0ac;
+  --acento: #4c6ef5;
+  --acento-oscuro: #3b5bdb;
+  --peligro: #e03131;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: var(--fondo);
+  color: var(--texto);
+}
+
+/* ---------- Cabecera ---------- */
+.cabecera {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 10px 18px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--borde);
+  flex-wrap: wrap;
+}
+.cabecera .logo { font-size: 1.1rem; margin: 0; }
+.cabecera nav { display: flex; gap: 12px; }
+.cabecera nav a {
+  color: var(--muted);
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+.cabecera nav a.activo { color: var(--texto); background: var(--borde); }
+
+.auth { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-left: auto; }
+.auth input, .auth select { padding: 5px 8px; border-radius: 6px; border: 1px solid var(--borde); background: var(--fondo); color: var(--texto); }
+
+/* ---------- Layout del configurador ---------- */
+.layout-configurador {
+  display: grid;
+  grid-template-columns: 280px 1fr 300px;
+  gap: 12px;
+  padding: 12px;
+  height: calc(100vh - 60px);
+}
+@media (max-width: 1000px) {
+  .layout-configurador { grid-template-columns: 1fr; height: auto; }
+  .canvas-wrap { min-height: 60vh; }
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  padding: 14px;
+  overflow-y: auto;
+}
+
+.muted { color: var(--muted); font-size: 0.85rem; }
+
+/* ---------- Catálogo ---------- */
+.catalogo { min-height: 0; }
+.grid-piezas { display: flex; flex-direction: column; gap: 10px; }
+.card-pieza {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--fondo);
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  padding: 8px;
+}
+.card-pieza.seleccionada { border-color: var(--acento); box-shadow: 0 0 0 1px var(--acento); }
+.silueta { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; }
+.card-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.card-info strong { font-size: 0.85rem; }
+
+/* ---------- Canvas ---------- */
+.canvas-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+.barra-canvas { display: flex; gap: 8px; }
+.input-nombre {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--borde);
+  background: var(--panel);
+  color: var(--texto);
+}
+.canvas3d {
+  position: relative;
+  flex: 1;
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  min-height: 400px;
+}
+
+/* Badge del gizmo (esquina superior izquierda del canvas) */
+.gizmo-hint {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(18, 20, 26, 0.85);
+  border: 1px solid var(--borde);
+  font-size: 0.75rem;
+  color: var(--muted);
+  pointer-events: none; /* nunca roba el clic del canvas */
+}
+.gizmo-hint strong { color: var(--acento); }
+
+/* ---------- Botones ---------- */
+.btn {
+  background: var(--acento);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--acento-oscuro); }
+.btn.primary { background: #2f9e44; }
+.btn.primary:hover { background: #2b8a3e; }
+.btn.danger { background: transparent; color: var(--peligro); border: 1px solid var(--peligro); }
+.btn.ghost { background: transparent; color: var(--muted); border: 1px solid var(--borde); }
+
+/* ---------- Parámetros ---------- */
+.parametros { min-height: 0; }
+.fieldset { border: 1px solid var(--borde); border-radius: 8px; margin: 10px 0; padding: 8px; }
+legend { font-size: 0.8rem; color: var(--muted); padding: 0 4px; }
+.control-eje { margin: 6px 0; }
+.control-eje label { display: flex; align-items: center; gap: 8px; }
+.control-eje .eje {
+  width: 18px; height: 18px; border-radius: 4px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.7rem; color: #fff; background: var(--acento);
+}
+.control-eje input[type="number"] {
+  width: 70px; padding: 4px 6px; border-radius: 6px;
+  border: 1px solid var(--borde); background: var(--fondo); color: var(--texto);
+}
+.control-eje input[type="range"] { width: 100%; }
+.acciones { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+
+/* ---------- Página de diseños ---------- */
+.pagina { padding: 18px; max-width: 900px; margin: 0 auto; }
+.lista-disenos { display: flex; flex-direction: column; gap: 12px; }
+.card-diseno {
+  background: var(--panel); border: 1px solid var(--borde);
+  border-radius: 10px; padding: 14px;
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+}
+.card-diseno-info { flex: 1; display: flex; flex-direction: column; }
+.tabla-bom { width: 100%; margin-top: 10px; }
+.tabla-bom table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.tabla-bom th, .tabla-bom td { border: 1px solid var(--borde); padding: 6px 8px; text-align: left; }
+.tabla-bom tfoot td { font-weight: bold; color: #2f9e44; }
+.error { color: var(--peligro); }

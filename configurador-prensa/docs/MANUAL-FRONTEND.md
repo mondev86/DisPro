@@ -16,6 +16,7 @@ del frontend (React + Vite + Three.js + Zustand + Socket.io).
    - [src/store/useStore.js](#storeusestorejs)
    - [src/socket.js](#socketjs)
    - [src/components/Catalogo.jsx](#catalogojsx)
+   - [src/components/Outliner.jsx](#outlinerjsx)
    - [src/components/Canvas3D.jsx](#canvas3djsx)
    - [src/components/PanelParametros.jsx](#panelparametrosjsx)
    - [src/pages/Disenos.jsx](#disenosjsx)
@@ -68,6 +69,11 @@ Cada pieza que colocas en el canvas es un objeto "piezaDiseno" que vive en el
    (lo mismo ocurre a la inversa: si mueves un slider del panel, el store
    actualiza la malla y el gizmo la sigue automáticamente)
 ```
+
+**Alternativa de selección (paso 3):** en vez de hacer clic en la malla 3D,
+puedes hacer clic en la fila del **Outliner** (columna de la izquierda). Al
+final todas las vías tocan el mismo `store.seleccion`, así que el gizmo, el
+panel y el outliner quedan sincronizados.
 
 ---
 
@@ -133,6 +139,20 @@ Cliente Socket.io. Ver sección 5.
 
 > El guard `activo` es una práctica habitual con React 18: evita `setState`
 > después de desmontar.
+
+### `Outliner.jsx`
+
+Árbol del diseño (paso 3), como el panel de capas de Blender/Illustrator:
+
+- Agrupa las piezas colocadas **por categoría** del catálogo (`pieceId` →
+  `catalogo[].category`). Las piezas llegadas por WebSocket sin ficha en el
+  catálogo caen en **"Sin categoría"**.
+- Cada fila muestra el **punto de color** de la pieza, nombre (con `#N` si hay
+  varias copias) y su **posición**.
+- Clic en la fila → `store.seleccionarPieza(key)` → **el gizmo y el panel se
+  sincronizan** por el mismo `seleccion`.
+- Cada categoría es un `<details>` plegable; apretar `open` mantiene el árbol
+  desplegado por defecto.
 
 ### `Canvas3D.jsx`
 
@@ -315,6 +335,10 @@ misma interfaz ("geometria") — así el Canvas seguirá funcionando igual.
   desmonta sin excepciones.
 - Comprueba que el store expone la configuración de **snapping** con sus valores
   por defecto y que `setSnapping` la actualiza.
+
+`src/__tests__/Outliner.smoke.test.jsx` (paso 3) verifica el árbol: agrupa por
+categoría (incluido el fallback "Sin categoría"), muestra una fila por pieza y
+un clic selecciona la pieza en el store.
 
 `src/test/setup.js` aporta los polyfills que jsdom no trae: `requestAnimationFrame`,
 `canvas.getContext`, `ResizeObserver`.

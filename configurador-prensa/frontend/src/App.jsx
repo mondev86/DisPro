@@ -14,6 +14,7 @@ import { Routes, Route, NavLink } from 'react-router-dom';
 
 import Catalogo from './components/Catalogo.jsx';
 import Canvas3D from './components/Canvas3D.jsx';
+import Outliner from './components/Outliner.jsx';
 import PanelParametros from './components/PanelParametros.jsx';
 import Disenos from './pages/Disenos.jsx';
 
@@ -61,6 +62,9 @@ function Configurador() {
     <div className="layout-configurador">
       {/* Columna izquierda: catálogo */}
       <Catalogo />
+
+      {/* Columna 2: árbol de piezas colocadas (outliner, paso 3) */}
+      <Outliner />
 
       {/* Columna central: canvas 3D */}
       <section className="canvas-wrap">

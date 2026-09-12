@@ -75,6 +75,11 @@ puedes hacer clic en la fila del **Outliner** (columna de la izquierda). Al
 final todas las vías tocan el mismo `store.seleccion`, así que el gizmo, el
 panel y el outliner quedan sincronizados.
 
+**Deshacer/rehacer (paso 5):** `Ctrl+Z` deshace el último paso, `Ctrl+Shift+Z`
+(o `Ctrl+Y`) lo rehace. El historial se guarda por gesto: un arrastre del
+gizmo o de un slider cuenta como un único paso. Los atajos no roban las teclas
+mientras escribes en un input (se comprueba `event.target.tagName`).
+
 ---
 
 ## 3. Archivo a archivo
@@ -207,6 +212,27 @@ const useStore = create(
 - **`partialize`** recorta lo que se persiste. Sin él, guardaríamostodo el store.
 - **`aplicarRemoto`** duplica piezas si otro cliente creó una con una `key` que
   no conocemos → la sincronización funciona en ambos sentidos.
+- **Historial de deshacer/rehacer (paso 5)**: el store mantiene
+  `historialPasado` / `historialFuturo`, arrays de "instantáneas" del diseño
+  (copias profundas con `clonar()`), y **no** se persisten en localStorage.
+  Cada acción mutadora registra el estado previo:
+
+  - Acciones **discretas** (agregar, eliminar, limpiar, cambio remoto) siempre
+    crean un punto con `puntoHistorial()`.
+  - El **gizmo** tiene frontera real de gesto: en `mouseDown` hace
+    `capturarHistorial()` (punto del estado previo + `historialAbierto: true`) y
+    en `mouseUp` `cerrarHistorial()`. Mientras está abierto, `actualizarPieza`
+    NO apila puntos → **todo un arrastre es un único Ctrl+Z** pase lo que pase
+    (los frames pueden ir espaciados en máquinas lentas).
+  - Para editores continuos **sin** frontera de gesto (sliders del panel),
+    `actualizarPieza` usa `puntoArrastre()`: solo registra si pasaron más de
+    `MISMO_PASO_MS = 120 ms` desde el último punto → un barrido de slider
+    cuenta como un único paso.
+  - `historialUltimo` marca el instante del último punto para ese colapso;
+    `deshacer`/`rehacer` lo reinician (cortan la "ráfaga").
+  - `deshacer()`/`rehacer()` restauran la instantánea (recalculando la
+    selección si la pieza activa dejó de existir). Un cambio nuevo corta el
+    redo (`historialFuturo: []`).
 - **Estructura de la piezaDiseno** — es el contrato entre store, canvas y WS:
 
 ```js
@@ -260,11 +286,16 @@ useEffect(() => {
   // 4) Raycaster (selección por clic)
   // 5) dibujarMallas(): crear/actualizar/borrar mallas según el store
   // 6) useStore.subscribe(...) → redibuja al cambiar piezas/selección
-  // 7) eventos de puntero (selección) + tecla W/E/R + resize
+  // 7) eventos de puntero (selección) + tecla W/E/R + Ctrl+Z/Y + resize
   // 8) bucle requestAnimationFrame (render cada frame)
   // 9) cleanup: desconecta suscripción y libera recursos WebGL
 }, []);
 ```
+
+**Teclado (pasos 1 y 5):** `alTecla` escucha `keydown` en `window` y, con un
+guard previo (si el foco está en un `INPUT`/`TEXTAREA`/`SELECT` no actúa),
+hace `Ctrl+Z` → `deshacer()`, `Ctrl+Shift+Z` o `Ctrl+Y` → `rehacer()`. Si no
+era un atajo, reenvía al modo del gizmo con **W**=mover, **E**=girar, **R**=escalar.
 
 **¿Por qué un solo `useEffect` vacío?** Porque los objetos Three.js no son
 "reactivos". La reactividad entra por la **suscripción al store**

@@ -23,6 +23,48 @@ import { persist } from 'zustand/middleware';
 // Genera una clave única por instancia (para piezas duplicadas)
 const claveUnica = () => `p-${crypto.randomUUID?.() || Math.random().toString(36).slice(2)}`;
 
+// ------------------------------------------------------------
+// HISTORIAL DE DESHACER/REHACER (paso 5)
+//
+// Guardamos "instantáneas" del array piezasDiseno ANTES de cada cambio.
+// El reto: un arrastre del gizmo/slider produce decenas de cambios por
+// segundo y no queremos llenar el historial con 60 pasos por arrastre.
+// Regla usada:
+//   - Acciones DISCRETAS (añadir, eliminar, limpiar, cambio remoto)
+//     → siempre crean un punto de deshacer.
+//   - `actualizarPieza` (transformaciones) → solo crea punto si no hay
+//     otro reciente (< MISMO_PASO_MS): así un arrastre completo cuenta
+//     como UN solo paso que vuelve al estado previo al gesto.
+// ------------------------------------------------------------
+const MISMO_PASO_MS = 120;
+const HISTORIAL_MAX = 50;
+
+// Copia profunda (los arrays de transform entran por referencia si no)
+const clonar = (piezasDiseno) =>
+  piezasDiseno.map((p) => ({
+    ...p,
+    transform: {
+      position: [...(p.transform?.position ?? [0, 0, 0])],
+      rotation: [...(p.transform?.rotation ?? [0, 0, 0])],
+      scale: [...(p.transform?.scale ?? [1, 1, 1])],
+    },
+  }));
+
+// Crea un punto de deshacer con el estado ACTUAL (antes de mutar) y
+// corta el futuro (un cambio nuevo invalida el redo).
+const puntoHistorial = (estado) => ({
+  historialPasado: [...estado.historialPasado, clonar(estado.piezasDiseno)].slice(-HISTORIAL_MAX),
+  historialFuturo: [],
+  historialUltimo: Date.now(),
+});
+
+// Para transformaciones continuas: añade punto SOLO si ha pasado el
+// intervalo mínimo desde el último (inicio de un nuevo arrastre).
+const puntoArrastre = (estado) => {
+  if (Date.now() - (estado.historialUltimo || 0) < MISMO_PASO_MS) return null;
+  return puntoHistorial(estado);
+};
+
 // Creamos el store con la función `create`.
 // Envolvemos en `persist` para que el trabajo no se pierda al recargar
 // la página (se guarda en localStorage bajo la key "prensa-diseno").
@@ -46,6 +88,15 @@ export const useStore = create(
 
       // Clave de la pieza seleccionada (null = ninguna)
       seleccion: null,
+
+      // Historial de deshacer/rehacer (paso 5). Arrays de "instantáneas"
+      // de piezasDiseno; ver helpers arriba. NO se persiste en localStorage.
+      historialPasado: [],
+      historialFuturo: [],
+      historialUltimo: 0,
+      // bandera: TRUE mientras hay un arrastre del gizmo en curso → los
+      // `actualizarPieza` de los frames NO crean puntos de historial.
+      historialAbierto: false,
 
       // Ajustes globales de "snapping" (paso 2 de la hoja de ruta):
       // cuando el gizmo está en modo Mover/Girar/Escalar, arrastrar deja
@@ -87,6 +138,8 @@ export const useStore = create(
             transform: { position: pos, rotation: [0, 0, 0], scale: [1, 1, 1] },
           };
           return {
+            // Acción discreta → siempre un punto de deshacer (estado previo)
+            ...puntoHistorial(estado),
             piezasDiseno: [...estado.piezasDiseno, nueva],
             seleccion: nueva.key, // seleccionamos la pieza recién añadida
           };
@@ -95,6 +148,7 @@ export const useStore = create(
       // Elimina una pieza del canvas
       eliminarPieza: (key) =>
         set((estado) => ({
+          ...puntoHistorial(estado),
           piezasDiseno: estado.piezasDiseno.filter((p) => p.key !== key),
           seleccion: estado.seleccion === key ? null : estado.seleccion,
         })),
@@ -103,47 +157,106 @@ export const useStore = create(
       seleccionarPieza: (key) => set({ seleccion: key }),
       deseleccionar: () => set({ seleccion: null }),
 
+      // ---- Fronteras del arrastre del gizmo (paso 5) ----
+      // Se llaman desde Canvas3D en los eventos mouseDown/mouseUp del gizmo.
+      capturarHistorial: () =>
+        set((estado) => ({
+          // Punto de deshacer del estado ANTES del arrastre + arrastre abierto
+          ...puntoHistorial(estado),
+          historialAbierto: true,
+        })),
+      cerrarHistorial: () => set({ historialAbierto: false }),
+
       // Actualiza un campo de una pieza (posición, rotación, escala, cantidad)
       // `delta` puede ser { transform:{...} } o { cantidad: 5 }
+      // Es la acción que llaman sliders Y gizmo durante un arrastre. El gizmo
+      // ya capturó el punto en su mouseDown (`historialAbierto`), así que los
+      // frames no apilan más pasos; para editores continuos sin frontera
+      // (sliders del panel) se usa `puntoArrastre` (colapso por tiempo).
       actualizarPieza: (key, delta) =>
-        set((estado) => ({
-          piezasDiseno: estado.piezasDiseno.map((p) => {
-            if (p.key !== key) return p;
-            // Si llega transform, fusionamos dentro (no reemplazamos el objeto)
-            const transform = delta.transform
-              ? {
-                  position: delta.transform.position ?? p.transform.position,
-                  rotation: delta.transform.rotation ?? p.transform.rotation,
-                  scale: delta.transform.scale ?? p.transform.scale,
-                }
-              : p.transform;
-            return { ...p, ...delta, transform };
-          }),
-        })),
+        set((estado) => {
+          const historial = estado.historialAbierto
+            ? null
+            : puntoArrastre(estado);
+          return {
+            ...(historial || {}),
+            piezasDiseno: estado.piezasDiseno.map((p) => {
+              if (p.key !== key) return p;
+              // Si llega transform, fusionamos dentro (no reemplazamos el objeto)
+              const transform = delta.transform
+                ? {
+                    position: delta.transform.position ?? p.transform.position,
+                    rotation: delta.transform.rotation ?? p.transform.rotation,
+                    scale: delta.transform.scale ?? p.transform.scale,
+                  }
+                : p.transform;
+              return { ...p, ...delta, transform };
+            }),
+          };
+        }),
 
       // Aplica un cambio recibido por WebSocket (de OTRO cliente).
       // Si la pieza no existe todavía (la creó el otro), se añade.
       aplicarRemoto: (pieza) =>
         set((estado) => {
+          const historial = puntoHistorial(estado);
           const existe = estado.piezasDiseno.some((p) => p.key === pieza.key);
           if (existe) {
             return {
+              ...historial,
               piezasDiseno: estado.piezasDiseno.map((p) =>
                 p.key === pieza.key ? { ...p, ...pieza } : p
               ),
             };
           }
-          return { piezasDiseno: [...estado.piezasDiseno, pieza] };
+          return { ...historial, piezasDiseno: [...estado.piezasDiseno, pieza] };
         }),
 
       // Vacía el diseño (botón "Nuevo diseño")
       limpiarDiseno: () =>
-        set(() => ({
+        set((estado) => ({
+          ...puntoHistorial(estado),
           piezasDiseno: [],
           seleccion: null,
           // NUEVA sesión para no mezclar con la sala anterior
           sessionId: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
         })),
+
+      // --------------------------------------------------
+      // DESHACER / REHACER (paso 5) — atajos Ctrl+Z / Ctrl+Shift+Z
+      // --------------------------------------------------
+      deshacer: () =>
+        set((estado) => {
+          if (estado.historialPasado.length === 0) return {}; // nada que deshacer
+          const pasados = [...estado.historialPasado];
+          const objetivo = pasados.pop(); // estado anterior a la última edición
+          return {
+            piezasDiseno: clonar(objetivo),
+            // Si la selección actual seguía existiendo, se conserva
+            seleccion: objetivo.some((p) => p.key === estado.seleccion)
+              ? estado.seleccion
+              : null,
+            historialPasado: pasados,
+            historialFuturo: [estado.piezasDiseno, ...estado.historialFuturo],
+            historialUltimo: Date.now(), // undo/rehacer cortan la "ráfaga"
+          };
+        }),
+
+      rehacer: () =>
+        set((estado) => {
+          if (estado.historialFuturo.length === 0) return {}; // nada que rehacer
+          const futuros = [...estado.historialFuturo];
+          const objetivo = futuros.shift();
+          return {
+            piezasDiseno: clonar(objetivo),
+            seleccion: objetivo.some((p) => p.key === estado.seleccion)
+              ? estado.seleccion
+              : null,
+            historialPasado: [...estado.historialPasado, estado.piezasDiseno].slice(-HISTORIAL_MAX),
+            historialFuturo: futuros,
+            historialUltimo: Date.now(), // undo/rehacer cortan la "ráfaga"
+          };
+        }),
 
       // Actualiza el nombre del diseño
       setNombreDiseno: (nombre) => set({ nombreDiseno: nombre }),

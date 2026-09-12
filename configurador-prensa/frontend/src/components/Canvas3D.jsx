@@ -176,12 +176,18 @@ export default function Canvas3D() {
     };
     transformControls.addEventListener('objectChange', sincronizarGizmo);
 
-    // Pausa/reanuda la cámara mientras se arrastra el gizmo
+    // Pausa/reanuda la cámara mientras se arrastra el gizmo.
+    // Paso 5: al EMPEZAR el arrastre se captura el punto de deshacer (estado
+    // previo al gesto) y se "abre" el historial: los frames del arrastre no
+    // generarán más puntos, así un drag completo = UN solo Ctrl+Z.
+    // Al soltar (mouseUp) se cierra el historial.
     const pausarCamara = () => {
       controls.enabled = false;
+      useStore.getState().capturarHistorial();
     };
     const reanudarCamara = () => {
       controls.enabled = true;
+      useStore.getState().cerrarHistorial();
     };
     transformControls.addEventListener('mouseDown', pausarCamara);
     transformControls.addEventListener('mouseUp', reanudarCamara);
@@ -189,11 +195,26 @@ export default function Canvas3D() {
     // Cambio de modo del gizmo con el teclado (W/E/R)
     const MODOS_TECLA = { KeyW: 'translate', KeyE: 'rotate', KeyR: 'scale' };
     const alTecla = (evento) => {
-      const nuevoModo = MODOS_TECLA[evento.code];
-      if (!nuevoModo) return;
       // No robar las teclas mientras se teclea en un input/slider del panel
       const etiqueta = evento.target?.tagName;
       if (etiqueta === 'INPUT' || etiqueta === 'TEXTAREA' || etiqueta === 'SELECT') return;
+
+      // DESHACER / REHACER (paso 5): Ctrl+Z, Ctrl+Shift+Z y Ctrl+Y
+      const conCtrl = evento.ctrlKey || evento.metaKey;
+      if (conCtrl && evento.code === 'KeyZ') {
+        evento.preventDefault(); // que no haga el undo nativo del navegador
+        if (evento.shiftKey) useStore.getState().rehacer();
+        else useStore.getState().deshacer();
+        return;
+      }
+      if (conCtrl && evento.code === 'KeyY') {
+        evento.preventDefault();
+        useStore.getState().rehacer();
+        return;
+      }
+
+      const nuevoModo = MODOS_TECLA[evento.code];
+      if (!nuevoModo) return;
       transformControls.setMode(nuevoModo);
       setModo(nuevoModo); // el badge de la esquina refleja el modo actual
     };

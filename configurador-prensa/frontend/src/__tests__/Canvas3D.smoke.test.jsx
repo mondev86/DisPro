@@ -182,4 +182,94 @@ describe('Canvas3D (smoke test)', () => {
     expect(useStore.getState().snapping.espaciado).toBe(0.5);
     expect(useStore.getState().snapping.activo).toBe(false);
   });
+
+  // ------------------------------------------------------
+  // PASO 5 — deshacer / rehacer (Ctrl+Z / Ctrl+Shift+Z)
+  // ------------------------------------------------------
+  const piezaBase = (key, pos) => ({
+    key,
+    pieceId: 'p1',
+    nombre: 'Patín',
+    geometria: { tipo: 'box', size: [0.3, 0.2, 0.3] },
+    cantidad: 1,
+    transform: { position: pos, rotation: [0, 0, 0], scale: [1, 1, 1] },
+  });
+  const reiniciarHistorial = () =>
+    useStore.setState({
+      historialPasado: [],
+      historialFuturo: [],
+      historialUltimo: 0,
+      historialAbierto: false,
+    });
+
+  it('deshacer elimina la última pieza añadida y rehacer la restaura (paso 5)', () => {
+    reiniciarHistorial();
+    useStore.getState().agregarPieza(piezaBase('publica', [0, 0, 0]));
+    const k = useStore.getState().piezasDiseno[0].key;
+    expect(useStore.getState().piezasDiseno).toHaveLength(1);
+
+    useStore.getState().deshacer();
+    expect(useStore.getState().piezasDiseno).toHaveLength(0);
+
+    useStore.getState().rehacer();
+    expect(useStore.getState().piezasDiseno).toHaveLength(1);
+    expect(useStore.getState().piezasDiseno[0].key).toBe(k);
+    // Tras un paso nuevo, el redo se corta
+    useStore.getState().deshacer();
+    useStore.getState().agregarPieza(piezaBase('publica', [1, 0, 0]));
+    useStore.getState().rehacer();
+    expect(useStore.getState().piezasDiseno).toHaveLength(1); // el redo murió al editar
+  });
+
+  it('el arrastre del gizmo es UN solo paso (captura en mouseDown) (paso 5)', async () => {
+    reiniciarHistorial();
+    useStore.getState().agregarPieza(piezaBase('publica', [0, 0, 0]));
+    const k = useStore.getState().piezasDiseno[0].key;
+    const inicial = useStore.getState().piezasDiseno[0].transform.position; // spawn aleatorio
+
+    // mouseDown del gizmo → captura el estado previo y abre el historial
+    useStore.getState().capturarHistorial();
+    useStore.getState().actualizarPieza(k, { transform: { position: [1, 0, 0] } });
+    useStore.getState().actualizarPieza(k, { transform: { position: [1, 0.5, 0] } });
+    useStore.getState().actualizarPieza(k, { transform: { position: [2, 0.5, 0] } });
+    useStore.getState().cerrarHistorial(); // mouseUp
+
+    // Un solo deshacer devuelve a la posición inicial del arrastre
+    useStore.getState().deshacer();
+    const pieza = useStore.getState().piezasDiseno[0];
+    expect(pieza.transform.position).toEqual(inicial);
+    expect(useStore.getState().historialFuturo).toHaveLength(1);
+
+    // Y un rehacer restaura el punto final del arrastre
+    useStore.getState().rehacer();
+    expect(useStore.getState().piezasDiseno[0].transform.position).toEqual([2, 0.5, 0]);
+
+    // Con el historial cerrado, una nueva edición vuelve a generar puntos
+    await new Promise((r) => setTimeout(r, 250)); // gesto nuevo tras el mouseUp
+    useStore.getState().actualizarPieza(k, { transform: { position: [3, 0, 0] } });
+    useStore.getState().deshacer();
+    expect(useStore.getState().piezasDiseno[0].transform.position).toEqual([2, 0.5, 0]);
+  });
+
+  it('los cambios continuos del panel se colapsan por tiempo en un solo paso (paso 5)', async () => {
+    // Los sliders del panel no tienen "mouseDown" del gizmo: su frontera es
+    // el intervalo. Varios ticks en < 120 ms deben contar como UN paso.
+    reiniciarHistorial();
+    useStore.getState().agregarPieza(piezaBase('publica', [0, 0, 0]));
+    const k = useStore.getState().piezasDiseno[0].key;
+    const inicial = useStore.getState().piezasDiseno[0].transform.position;
+
+    // Pequeña pausa para que el primer tick del slider sea un "gesto nuevo".
+    await new Promise((r) => setTimeout(r, 250));
+
+    useStore.getState().actualizarPieza(k, { transform: { position: [1, 0, 0] } });
+    useStore.getState().actualizarPieza(k, { transform: { position: [1.5, 0.2, 0] } });
+    useStore.getState().actualizarPieza(k, { transform: { position: [2, 0.5, 0] } });
+
+    useStore.getState().deshacer();
+    expect(useStore.getState().piezasDiseno[0].transform.position).toEqual(inicial);
+
+    useStore.getState().rehacer();
+    expect(useStore.getState().piezasDiseno[0].transform.position).toEqual([2, 0.5, 0]);
+  });
 });

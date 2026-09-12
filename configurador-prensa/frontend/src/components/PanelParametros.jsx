@@ -45,6 +45,63 @@ function ControlEje({ etiqueta, valor, rango, paso, alCambiar }) {
 }
 
 // ------------------------------------------------------------
+// Subcomponente: ajustes globales de snapping (paso 2 de la hoja de
+// ruta). Los redondea TransformControls en el canvas; aquí solo se
+// configuran los pasos. Se muestra SIEMPRE (con o sin pieza activa).
+// ------------------------------------------------------------
+function ConfigSnapping() {
+  const snapping = useStore((s) => s.snapping);
+  const setSnapping = useStore((s) => s.setSnapping);
+
+  return (
+    <fieldset className="snap-config">
+      <legend>Ajustes de arrastre (snapping)</legend>
+      <label className="snap-fila">
+        <span>Activar al arrastrar</span>
+        <input
+          type="checkbox"
+          checked={snapping.activo}
+          onChange={(e) => setSnapping({ activo: e.target.checked })}
+        />
+      </label>
+      <label className="snap-fila">
+        <span>Espaciado mover (m)</span>
+        <input
+          type="number"
+          min="0.05"
+          step="0.05"
+          value={snapping.espaciado}
+          disabled={!snapping.activo}
+          onChange={(e) => setSnapping({ espaciado: Math.max(0.05, Number(e.target.value)) })}
+        />
+      </label>
+      <label className="snap-fila">
+        <span>Ángulo girar (°)</span>
+        <input
+          type="number"
+          min="1"
+          step="1"
+          value={snapping.angulo}
+          disabled={!snapping.activo}
+          onChange={(e) => setSnapping({ angulo: Math.max(1, Number(e.target.value)) })}
+        />
+      </label>
+      <label className="snap-fila">
+        <span>Escala</span>
+        <input
+          type="number"
+          min="0.05"
+          step="0.05"
+          value={snapping.escala}
+          disabled={!snapping.activo}
+          onChange={(e) => setSnapping({ escala: Math.max(0.05, Number(e.target.value)) })}
+        />
+      </label>
+    </fieldset>
+  );
+}
+
+// ------------------------------------------------------------
 // Componente principal
 // ------------------------------------------------------------
 export default function PanelParametros() {
@@ -60,11 +117,13 @@ export default function PanelParametros() {
       <aside className="panel">
         <h2>Parámetros</h2>
         <p className="muted">
-          Haz clic sobre una pieza del canvas para editarla. Con el <strong>gizmo</strong>{' '}
-          que aparece sobre la pieza seleccionada puedes <strong>moverla</strong> (W),
-          <strong> girarla</strong> (E) o <strong>escalarla</strong> (R).
-          También puedes ajustar los valores con precisión aquí abajo.
+          Haz clic sobre una pieza del canvas para editarla. Con el{' '}
+          <strong>gizmo</strong> que aparece sobre la pieza seleccionada puedes{' '}
+          <strong>moverla</strong> (W), <strong>girarla</strong> (E) o{' '}
+          <strong>escalarla</strong> (R). También puedes ajustar los valores con
+          precisión aquí abajo.
         </p>
+        <ConfigSnapping />
       </aside>
     );
   }
@@ -148,6 +207,8 @@ export default function PanelParametros() {
           />
         ))}
       </fieldset>
+
+      <ConfigSnapping />
 
       <div className="acciones">
         <button

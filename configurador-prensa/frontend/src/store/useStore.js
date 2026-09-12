@@ -47,6 +47,18 @@ export const useStore = create(
       // Clave de la pieza seleccionada (null = ninguna)
       seleccion: null,
 
+      // Ajustes globales de "snapping" (paso 2 de la hoja de ruta):
+      // cuando el gizmo está en modo Mover/Girar/Escalar, arrastrar deja
+      // de ser libre y los valores se redondean a los múltiplos indicados.
+      //   - activo:    el snapping está habilitado (si no, arrastre libre)
+      //   - espaciado: paso de POSICIÓN en metros (0.25 → cada 25 cm)
+      //   - angulo:    paso de ROTACIÓN en grados (15 → 15°, 30°, 45°...)
+      //   - escala:    paso de ESCALA (0.1 → 1.0, 1.1, 1.2...)
+      //
+      // Se persiste para que cada clienta conserve su preferencia al
+      // recargar la página.
+      snapping: { activo: true, espaciado: 0.25, angulo: 15, escala: 0.1 },
+
       // Datos de usuario (opcional). El token vive en localStorage.
       usuario: null,
 
@@ -136,6 +148,10 @@ export const useStore = create(
       // Actualiza el nombre del diseño
       setNombreDiseno: (nombre) => set({ nombreDiseno: nombre }),
 
+      // Actualiza los ajustes de snapping (campo a campo)
+      setSnapping: (parcial) =>
+        set((estado) => ({ snapping: { ...estado.snapping, ...parcial } })),
+
       // Usuario (login/registro opcional)
       setUsuario: (usuario) => set({ usuario }),
     }),
@@ -148,6 +164,7 @@ export const useStore = create(
         sessionId: estado.sessionId,
         nombreDiseno: estado.nombreDiseno,
         piezasDiseno: estado.piezasDiseno,
+        snapping: estado.snapping,
       }),
     }
   )

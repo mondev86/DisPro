@@ -111,6 +111,26 @@ export default function Canvas3D() {
     transformControls.enabled = false; // solo interactúa si hay selección
     scene.add(transformControls.getHelper()); // las manecillas del gizmo
 
+    // Snapping (paso 2): las propiedades translationSnap / rotationSnap /
+    // scaleSnap redondean el arrastre a los pasos configurados en el panel.
+    // translationSnap es un ESCALAR (0.25 → se redondean X, Y y Z a 0.25);
+    // rotationSnap va en radianes (∂ de los grados de la UI) y scaleSnap en
+    // unidades de escala. Si "activo" es false, las fijamos a null → arrastre
+    // totalmente libre.
+    const aplicarSnapping = () => {
+      const { snapping } = useStore.getState();
+      if (snapping.activo) {
+        transformControls.translationSnap = snapping.espaciado;
+        transformControls.rotationSnap = (snapping.angulo * Math.PI) / 180; // grados → rad
+        transformControls.scaleSnap = snapping.escala;
+      } else {
+        transformControls.translationSnap = null;
+        transformControls.rotationSnap = null;
+        transformControls.scaleSnap = null;
+      }
+    };
+    aplicarSnapping();
+
     // Al terminar un arrastre del gizmo, los valores "vivos" de la malla
     // se copian al store y se difunden por WebSocket (socket.js hace
     // throttle del envío, así que arrastrar no satura la red).
@@ -257,6 +277,9 @@ export default function Canvas3D() {
     const unsubscribe = useStore.subscribe((estado, previo) => {
       if (estado.piezasDiseno !== previo.piezasDiseno || estado.seleccion !== previo.seleccion) {
         dibujarMallas();
+      }
+      if (estado.snapping !== previo.snapping) {
+        aplicarSnapping();
       }
     });
 

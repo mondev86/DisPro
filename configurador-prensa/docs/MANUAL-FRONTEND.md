@@ -277,6 +277,25 @@ permite **mover** (W), **girar** (E) y **escalar** (R) la pieza seleccionada.
 - El envío por WebSocket pasa por el throttle de `socket.js`, así que arrastrar
   el gizmo no satura la red (solo se emite como máximo cada 80 ms por pieza).
 
+**Snapping configurable (paso 2).** TransformControls redondea el arrastre si
+las propiedades `translationSnap`, `rotationSnap` y `scaleSnap` están fijadas:
+
+- El estado vive en el store (`snapping: { activo, espaciado, angulo, escala }`)
+  y **se persiste** en localStorage (en `partialize` de `useStore.js`).
+- El panel (`ConfigSnapping` en `PanelParametros.jsx`) edita esos valores:
+  espaciado de posición en metros, ángulo de giro en grados y paso de escala.
+- `Canvas3D` reacciona al cambio de `snapping` por su suscripción al store y
+  aplica:
+  ```
+  transformControls.translationSnap = espaciado              // escalar (metros)
+  transformControls.rotationSnap     = angulo * (π / 180)    // grados → radianes
+  transformControls.scaleSnap        = escala                // paso de escala
+  ```
+  `translationSnap` es un **escalar** (three redondea X, Y y Z a ese paso).
+  Si `activo` es false, las tres se ponen a `null` → arrastre libre.
+- Así mover la pieza con el gizmo "salta" de `0.25 en 0.25 m`, girar de `15° en
+  15°` y escalar de `0.1 en 0.1` (valores por defecto editables).
+
 **Geometrías**: `BoxGeometry` para tubos/chapas/asientos y `CylinderGeometry`
 para poleas/rodamientos. La clave de geometría evita recrear la forma si no
 cambió (perf).
@@ -294,6 +313,8 @@ misma interfaz ("geometria") — así el Canvas seguirá funcionando igual.
   sustituimos las clases por stubs con métodos no-op).
 - Verifica que el componente se monta, muestra `data-testid="canvas3d"` y se
   desmonta sin excepciones.
+- Comprueba que el store expone la configuración de **snapping** con sus valores
+  por defecto y que `setSnapping` la actualiza.
 
 `src/test/setup.js` aporta los polyfills que jsdom no trae: `requestAnimationFrame`,
 `canvas.getContext`, `ResizeObserver`.

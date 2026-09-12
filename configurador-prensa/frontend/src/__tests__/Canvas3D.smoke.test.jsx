@@ -72,6 +72,19 @@ vi.mock('three', () => {
     GridHelper: Stub,
     Raycaster: class { setFromCamera() {} intersectObjects() { return []; } },
     Vector2: class { constructor(x = 0, y = 0) { this.x = x; this.y = y; } },
+    Vector3: class {
+      constructor(x = 0, y = 0, z = 0) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+      }
+      set(x, y, z) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        return this;
+      }
+    },
     Color: class { constructor() {} set() {} },
   };
 });
@@ -153,5 +166,19 @@ describe('Canvas3D (smoke test)', () => {
     // Verifica el puente store → componente a nivel de lógica
     const estadoInicial = useStore.getState();
     expect(Array.isArray(estadoInicial.piezasDiseno)).toBe(true);
+  });
+
+  it('el snapping se configura desde el store (paso 2)', () => {
+    // Los valores por defecto deben existir y la acción debe actualizarlos
+    const estado = useStore.getState();
+    expect(estado.snapping).toEqual({
+      activo: true,
+      espaciado: 0.25,
+      angulo: 15,
+      escala: 0.1,
+    });
+    estado.setSnapping({ espaciado: 0.5, activo: false });
+    expect(useStore.getState().snapping.espaciado).toBe(0.5);
+    expect(useStore.getState().snapping.activo).toBe(false);
   });
 });

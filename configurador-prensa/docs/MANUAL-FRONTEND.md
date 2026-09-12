@@ -320,6 +320,18 @@ las propiedades `translationSnap`, `rotationSnap` y `scaleSnap` están fijadas:
 para poleas/rodamientos. La clave de geometría evita recrear la forma si no
 cambió (perf).
 
+**Hit-box ampliado (paso 4).** Los tubos finos (3×3 cm) son casi imposibles
+de pinchar con el ratón. Por eso cada pieza tiene además una **caja de
+colisión invisible** (material `visible:false`) que **nunca se renderiza**:
+
+- `tamanoHitBox()` calcula el tamaño en el mundo: para `box` usa `size`, para
+  `cylinder` usa `[diámetro, alto, diámetro]`, lo multiplica por la escala de
+  la pieza y garantiza un **mínimo por eje** (`HITBOX_MIN = 0.06 m`).
+- El raycaster intersecta estas cajas (`colisionadores`) en vez de las mallas
+  visuales, así que el clic "engorda" solo en la detección, no en el dibujo.
+- Las piezas grandes mantienen su hit-box exacto (el mínimo solo sube lo que
+  es más pequeño que 6 cm en algún eje).
+
 **TODO (avanzado)**: sustituir por modelos GLTF con `GLTFLoader` manteniendo la
 misma interfaz ("geometria") — así el Canvas seguirá funcionando igual.
 
@@ -339,6 +351,9 @@ misma interfaz ("geometria") — así el Canvas seguirá funcionando igual.
 `src/__tests__/Outliner.smoke.test.jsx` (paso 3) verifica el árbol: agrupa por
 categoría (incluido el fallback "Sin categoría"), muestra una fila por pieza y
 un clic selecciona la pieza en el store.
+
+El mock de `three` incluye los stubs de las clases que usa `Canvas3D`
+(`MeshBasicMaterial` entre ellos, necesarios para las hit-boxes del paso 4).
 
 `src/test/setup.js` aporta los polyfills que jsdom no trae: `requestAnimationFrame`,
 `canvas.getContext`, `ResizeObserver`.

@@ -58,6 +58,7 @@ vi.mock('three', () => {
     BoxGeometry: Stub,
     CylinderGeometry: Stub,
     MeshStandardMaterial: StubMaterial,
+    MeshBasicMaterial: StubMaterial,
     Mesh: class extends Stub {
       constructor(geometry, material) {
         super();

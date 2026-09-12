@@ -55,6 +55,27 @@ function crearGeometria(geometry) {
 const claveGeometria = (geometry) =>
   `${geometry?.tipo}:${(geometry?.size || []).join(',')}`;
 
+// ------------------------------------------------------------
+// Hit-box ampliado (paso 4): las piezas finas (tubos de 3cm,
+// varillas...) son casi imposibles de pinchar con el ratón. Para
+// cada pieza creamos una CAJA INVISIBLE que solo usa el raycaster,
+// con un MÍNIMO de tamaño por eje. El aspecto visual no cambia.
+// ------------------------------------------------------------
+const HITBOX_MIN = 0.06; // mínimo clicable en cada eje (m)
+
+// Tamaño en el mundo de la caja de colisión de una pieza:
+//   box      → tamaño real del paralelepípedo (size)
+//   cylinder → [diámetro, alto, diámetro] (size[0] es el radio)
+// Se multiplica por la escala de la pieza y se garantiza HITBOX_MIN.
+function tamanoHitBox(geometria, escala = [1, 1, 1]) {
+  const size = geometria?.size || [0.1, 0.1, 0.1];
+  const dims =
+    geometria?.tipo === 'cylinder'
+      ? [size[0] * 2, size[1] ?? 1, size[0] * 2]
+      : [size[0] ?? 1, size[1] ?? 1, size[2] ?? 1];
+  return dims.map((d, eje) => Math.max(d * (escala[eje] ?? 1), HITBOX_MIN));
+}
+
 export default function Canvas3D() {
   // Contenedor donde Three.js insertará su <canvas>
   const contenedorRef = useRef(null);
@@ -200,6 +221,13 @@ export default function Canvas3D() {
     // Malla por cada pieza colocada: map key-de-pieza → Mesh
     const mallas = new Map();
 
+    // Hit-boxes (paso 4): un material invisible compartido + una caja por
+    // pieza, SOLO para el raycast (jamás se renderiza). Así los tubos finos
+    // se pinchan con facilidad (área ≥ HITBOX_MIN) y los grandes mantienen
+    // su tamaño exacto.
+    const materialColision = new THREE.MeshBasicMaterial({ visible: false });
+    const colisionadores = new Map(); // key-de-pieza → Mesh invisible
+
     // ------------------------------------------------
     // 5. SINCERIZADO: crea/actualiza/elimina las mallas 3D
     //    según el contenido actual del store.
@@ -214,6 +242,13 @@ export default function Canvas3D() {
           scene.remove(mesh);
           mesh.geometry.dispose();
           mallas.delete(key);
+          // Y su hit-box invisible
+          const col = colisionadores.get(key);
+          if (col) {
+            scene.remove(col);
+            col.geometry.dispose();
+            colisionadores.delete(key);
+          }
         }
       }
 
@@ -253,6 +288,20 @@ export default function Canvas3D() {
         // Color según catálogo + resaltado de pieza seleccionada
         mesh.material.color.set(pieza.geometria?.color || '#888888');
         mesh.material.emissive.set(pieza.key === seleccion ? 0x224444 : 0x000000);
+
+        // Hit-box invisible: misma transformación, tamaño ampliado a lo
+        // mínimo clicable (las piezas grandes quedan con su tamaño justo)
+        let colisionador = colisionadores.get(pieza.key);
+        if (!colisionador) {
+          colisionador = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), materialColision);
+          colisionador.visible = false; // solo para el raycaster
+          colisionador.userData.key = pieza.key;
+          colisionadores.set(pieza.key, colisionador);
+          scene.add(colisionador);
+        }
+        colisionador.position.set(...(t.position || [0, 0, 0]));
+        colisionador.rotation.set(...(t.rotation || [0, 0, 0]));
+        colisionador.scale.set(...tamanoHitBox(pieza.geometria, t.scale || [1, 1, 1]));
       }
 
       // (c) Enganchar / soltar el gizmo según la pieza seleccionada.
@@ -305,7 +354,9 @@ export default function Canvas3D() {
       punto.x = ((evento.clientX - rect.left) / rect.width) * 2 - 1;
       punto.y = -((evento.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(punto, camera);
-      const blancos = raycaster.intersectObjects([...mallas.values()]);
+      // Intersectamos las HIT-BOXES (no las mallas visuales): así las piezas
+      // pequeñas se pueden pinchar aunque su malla sea finísima.
+      const blancos = raycaster.intersectObjects([...colisionadores.values()]);
       return blancos.length > 0 ? blancos[0].object.userData.key : null;
     };
 
@@ -389,6 +440,7 @@ export default function Canvas3D() {
       scene.remove(transformControls.getHelper());
       transformControls.dispose();
       for (const mesh of mallas.values()) mesh.geometry.dispose();
+      for (const col of colisionadores.values()) col.geometry.dispose();
       renderer.dispose();
       if (renderer.domElement.parentNode === contenedor) {
         contenedor.removeChild(renderer.domElement);

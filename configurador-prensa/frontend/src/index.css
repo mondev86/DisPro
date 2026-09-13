@@ -141,7 +141,21 @@ body {
   min-height: 0;
   position: relative; /* ancla de la barra de vistas (paso 7) */
 }
-.barra-canvas { display: flex; gap: 8px; }
+.barra-canvas { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.selector-plantillas {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+}
+.selector-plantillas select {
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--borde);
+  background: var(--panel);
+  color: var(--texto);
+  font-size: 0.8rem;
+}
 .input-nombre {
   flex: 1;
   padding: 8px 10px;

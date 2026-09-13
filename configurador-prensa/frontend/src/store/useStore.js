@@ -276,6 +276,39 @@ export const useStore = create(
           sessionId: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
         })),
 
+      // Carga una PLANTILLA base (paso 8). Reemplaza el diseño actual por
+      // el conjunto de piezas de la plantilla, resuelto contra el catálogo
+      // cargado por NOMBRE (los ids de BD no son estables entre entornos).
+      // Las piezas del catálogo que no existan se ignoran. Deja un punto
+      // de deshacer → Ctrl+Z recupera el diseño anterior.
+      cargarPlantilla: (plantilla) =>
+        set((estado) => {
+          const piezas = (plantilla.piezas ?? [])
+            .map((item) => {
+              const ficha = estado.catalogo.find((c) => c.name === item.nombre);
+              if (!ficha) return null;
+              return {
+                key: claveUnica(),
+                pieceId: ficha.id,
+                nombre: ficha.name,
+                geometria: ficha.geometry,
+                cantidad: item.cantidad ?? 1,
+                transform: {
+                  position: [...item.transform.position],
+                  rotation: [...item.transform.rotation],
+                  scale: [...item.transform.scale],
+                },
+              };
+            })
+            .filter(Boolean);
+          if (piezas.length === 0) return {}; // ninguna pieza del catálogo: no-op
+          return {
+            ...puntoHistorial(estado),
+            piezasDiseno: piezas,
+            seleccion: piezas[0].key, // dejamos la primera seleccionada
+          };
+        }),
+
       // --------------------------------------------------
       // DESHACER / REHACER (paso 5) — atajos Ctrl+Z / Ctrl+Shift+Z
       // --------------------------------------------------

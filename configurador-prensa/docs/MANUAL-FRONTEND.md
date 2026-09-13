@@ -96,6 +96,14 @@ hay piezas, mantiene el foco inicial `(0,1,0)`). La vista "Arriba" gira el
 "up" de la cámara a `-Z` para encuadrar como un plano; las demás usan `+Y`.
 Desde cualquier vista puedes seguir rotando/panear/zoom con el ratón.
 
+**Plantillas base (paso 8):** en la barra del canvas, un `<select>` ofrece
+puntos de partida prefabricados (estructura de prensa clásica, mesa de
+trabajo, banco de musculación). Al elegir una, se **reemplaza** el diseño
+actual (pide confirmación si ya hay piezas), las instancias se crean desde el
+catálogo resuelto **por nombre exacto** y la primera pieza queda
+seleccionada. Como la carga es una acción discreta, `Ctrl+Z` recupera el
+diseño anterior.
+
 ---
 
 ## 3. Archivo a archivo
@@ -174,6 +182,21 @@ Cliente Socket.io. Ver sección 5.
   sincronizan** por el mismo `seleccion`.
 - Cada categoría es un `<details>` plegable; apretar `open` mantiene el árbol
   desplegado por defecto.
+
+### `plantillas.js` y `SelectorPlantillas.jsx`
+
+**Plantillas base (paso 8).** `plantillas.js` es un array de datos puro:
+cada plantilla tiene `slug`, `nombre`, `descripcion` y una lista `piezas`,
+referenciadas por el **nombre exacto** del catálogo (los ids de BD no son
+estables entre entornos) con su `transform` completo. Si una pieza del
+catálogo no existe se ignora al cargar.
+
+`SelectorPlantillas.jsx` es el `<select>` de la barra del canvas: pide
+confirmación si ya hay piezas, invoca `store.cargarPlantilla(plantilla)` y se
+deja en "Elegir…". Toda la magia de resolver nombre→ficha y construir
+instancias únicas (`claveUnica()`, `pieceId`, `geometria`, `cantidad`,
+`transform`) está en la acción del store, que además registra un punto de
+deshacer (la plantilla es deshacible con `Ctrl+Z`).
 
 ### `registroVistas.js` y `VistasCamara.jsx`
 
@@ -432,6 +455,11 @@ misma interfaz ("geometria") — así el Canvas seguirá funcionando igual.
 componente está desacoplado vía `registroVistas`. Verifica que renderiza los 6
 botones, que un clic publica el código correcto en el registro y que la baja de
 un aplicador funciona.
+
+`src/__tests__/Plantillas.smoke.test.jsx` (paso 8) verifica las plantillas (definición
+con slugs únicos), la resolución por nombre contra un catálogo mínimo, el
+no-op cuando no hay fichas, y el selector (render de opciones, carga al elegir
+y petición de confirmación con diseño no vacío).
 
 `src/__tests__/Outliner.smoke.test.jsx` (paso 3) verifica el árbol: agrupa por
 categoría (incluido el fallback "Sin categoría"), muestra una fila por pieza y

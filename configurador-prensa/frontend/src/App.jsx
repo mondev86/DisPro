@@ -17,6 +17,7 @@ import Canvas3D from './components/Canvas3D.jsx';
 import Outliner from './components/Outliner.jsx';
 import PanelParametros from './components/PanelParametros.jsx';
 import VistasCamara from './components/VistasCamara.jsx';
+import SelectorPlantillas from './components/SelectorPlantillas.jsx';
 import Disenos from './pages/Disenos.jsx';
 
 import { useStore } from './store/useStore';
@@ -70,6 +71,7 @@ function Configurador() {
       {/* Columna central: canvas 3D */}
       <section className="canvas-wrap">
         <div className="barra-canvas">
+          <SelectorPlantillas />
           <input
             className="input-nombre"
             value={nombreDiseno}

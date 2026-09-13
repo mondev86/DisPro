@@ -184,6 +184,50 @@ describe('Canvas3D (smoke test)', () => {
   });
 
   // ------------------------------------------------------
+  // PASO 6 — duplicar y reflejar
+  // ------------------------------------------------------
+  const piezaPos = (pos) => ({
+    key: 'test-6',
+    pieceId: 'p1',
+    nombre: 'Polea',
+    geometria: { tipo: 'cylinder', color: '#fab005', size: [0.06, 0.03, 24] },
+    cantidad: 1,
+    transform: { position: pos, rotation: [0, 0, 0], scale: [1, 1, 1] },
+  });
+
+  it('duplicar crea una copia seleccionada con posición desplazada +0.5 en X (paso 6)', () => {
+    reiniciarHistorial();
+    useStore.setState({ piezasDiseno: [piezaPos([0.25, 0.8, 0])], seleccion: 'test-6' });
+    useStore.getState().duplicarPieza('test-6');
+    const estado = useStore.getState();
+    expect(estado.piezasDiseno).toHaveLength(2);
+    const copia = estado.piezasDiseno.find((p) => p.key !== 'test-6');
+    expect(estado.seleccion).toBe(copia.key);                     // se selecciona la copia
+    expect(copia.transform.position).toEqual([0.75, 0.8, 0]);   // +0.5 en X
+    expect(copia.transform.rotation).toEqual([0, 0, 0]);         // hereda la rotación
+    expect(copia.key).not.toBe('test-6');                         // distinta instancia
+  });
+
+  it('reflejar pieza invierte la posición en X y la rotación Y/Z (paso 6)', () => {
+    reiniciarHistorial();
+    useStore.setState({
+      piezasDiseno: [piezaPos([0.5, 0.8, 0])],
+      seleccion: 'test-6',
+    });
+    useStore.getState().reflejarPieza('test-6');
+    const t = useStore.getState().piezasDiseno[0].transform;
+    expect(t.position[0]).toBeCloseTo(-0.5, 5);   // espejo X
+    expect(t.position[1]).toBeCloseTo(0.8, 5);    // sin cambio
+
+    // Aplicarlo una segunda vez debe restaurar exactamente
+    useStore.getState().reflejarPieza('test-6');
+    const t2 = useStore.getState().piezasDiseno[0].transform;
+    expect(t2.position[0]).toBeCloseTo(0.5, 5);
+    expect(t2.rotation[1]).toBeCloseTo(0, 5);
+    expect(t2.rotation[2]).toBeCloseTo(0, 5);
+  });
+
+  // ------------------------------------------------------
   // PASO 5 — deshacer / rehacer (Ctrl+Z / Ctrl+Shift+Z)
   // ------------------------------------------------------
   const piezaBase = (key, pos) => ({

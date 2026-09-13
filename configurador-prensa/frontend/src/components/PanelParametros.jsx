@@ -106,7 +106,8 @@ function ConfigSnapping() {
 // ------------------------------------------------------------
 export default function PanelParametros() {
   // Estado del store que nos interesa
-  const { piezasDiseno, seleccion, eliminarPieza, deseleccionar, sessionId } = useStore();
+  const { piezasDiseno, seleccion, eliminarPieza, duplicarPieza, reflejarPieza, deseleccionar, sessionId } =
+    useStore();
 
   // Pieza actualmente seleccionada (o null)
   const pieza = piezasDiseno.find((p) => p.key === seleccion) || null;
@@ -206,6 +207,23 @@ export default function PanelParametros() {
             alCambiar={(v) => editarEje('scale', i, v)}
           />
         ))}
+      </fieldset>
+
+      {/* Acciones rápidas de la pieza (paso 6): duplicar y espejar en X */}
+      <fieldset>
+        <legend>Acciones</legend>
+        <div className="botonera-pieza">
+          <button className="btn" onClick={() => duplicarPieza(pieza.key)}>
+            Duplicar (Ctrl+D)
+          </button>
+          <button className="btn" onClick={() => reflejarPieza(pieza.key)}>
+            Reflejar X
+          </button>
+        </div>
+        <p className="muted" style={{ margin: '0.3rem 0 0' }}>
+          Reflejar X es un espejo respecto al plano YZ (la pieza queda del
+          otro lado del eje X). Aplicarlo dos veces la devuelve a su sitio.
+        </p>
       </fieldset>
 
       <ConfigSnapping />

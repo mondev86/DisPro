@@ -153,6 +153,60 @@ export const useStore = create(
           seleccion: estado.seleccion === key ? null : estado.seleccion,
         })),
 
+      // Duplica la pieza indicada (paso 6). La copia hereda geometría,
+      // cantidad y transform, desplazada +0.5 m en X para no quedar
+      // exactamente encima de la original. Se selecciona la copia.
+      duplicarPieza: (key) =>
+        set((estado) => {
+          const origen = estado.piezasDiseno.find((p) => p.key === key);
+          if (!origen) return {}; // sin pieza: no-op
+          const pos = [
+            (origen.transform.position[0] ?? 0) + 0.5,
+            origen.transform.position[1] ?? 0,
+            origen.transform.position[2] ?? 0,
+          ];
+          const copia = {
+            ...origen,
+            key: claveUnica(), // nueva instancia
+            transform: {
+              position: pos,
+              rotation: [...origen.transform.rotation],
+              scale: [...origen.transform.scale],
+            },
+          };
+          return {
+            ...puntoHistorial(estado),
+            piezasDiseno: [...estado.piezasDiseno, copia],
+            seleccion: copia.key,
+          };
+        }),
+
+      // Refleja la pieza indicada sobre el plano YZ (espejo respecto al
+      // eje X: x → −x). La geometría NO cambia: reescribimos el transform
+      // con la simetría correcta (las rotaciones y/z invierten su signo).
+      // Aplicarlo dos veces devuelve la pieza a su pose original.
+      reflejarPieza: (key) =>
+        set((estado) => {
+          const pieza = estado.piezasDiseno.find((p) => p.key === key);
+          if (!pieza) return {}; // sin pieza: no-op
+          const t = pieza.transform;
+          return {
+            ...puntoHistorial(estado),
+            piezasDiseno: estado.piezasDiseno.map((p) =>
+              p.key === key
+                ? {
+                    ...p,
+                    transform: {
+                      position: [-t.position[0], t.position[1], t.position[2]],
+                      rotation: [t.rotation[0], -t.rotation[1], -t.rotation[2]],
+                      scale: [...t.scale],
+                    },
+                  }
+                : p
+            ),
+          };
+        }),
+
       // (De)selecciona una pieza
       seleccionarPieza: (key) => set({ seleccion: key }),
       deseleccionar: () => set({ seleccion: null }),

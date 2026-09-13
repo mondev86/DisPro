@@ -228,6 +228,7 @@ legend { font-size: 0.8rem; color: var(--muted); padding: 0 4px; }
   width: 16px; height: 16px; accent-color: var(--acento);
 }
 .acciones { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.botonera-pieza { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* ---------- Página de diseños ---------- */
 .pagina { padding: 18px; max-width: 900px; margin: 0 auto; }

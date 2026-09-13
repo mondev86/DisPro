@@ -212,6 +212,12 @@ export default function Canvas3D() {
         useStore.getState().rehacer();
         return;
       }
+      // DUPLICAR (paso 6): Ctrl+D — la acción ignora la selección vacía
+      if (conCtrl && evento.code === 'KeyD') {
+        evento.preventDefault(); // que no salga el diálogo "marcar" del navegador
+        useStore.getState().duplicarPieza(useStore.getState().seleccion);
+        return;
+      }
 
       const nuevoModo = MODOS_TECLA[evento.code];
       if (!nuevoModo) return;

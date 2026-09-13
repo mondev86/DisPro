@@ -80,6 +80,14 @@ panel y el outliner quedan sincronizados.
 gizmo o de un slider cuenta como un único paso. Los atajos no roban las teclas
 mientras escribes en un input (se comprueba `event.target.tagName`).
 
+**Duplicar y reflejar (paso 6):** con una pieza seleccionada, el panel ofrece
+"Duplicar" (o `Ctrl+D`) y "Reflejar X". Duplicar crea una copia con nueva
+instancia desplazada `+0.5 m` en X para que no quede encima de la original, y
+queda seleccionada la copia. Reflejar X hace un espejo de la pieza respecto al
+plano YZ (x → −x): invierte el signo de la posición en X y de las rotaciones
+en Y/Z, dejando la geometría intacta (dos aplicaciones la devuelven a su
+lugar). Ambas acciones registran un punto de deshacer.
+
 ---
 
 ## 3. Archivo a archivo
@@ -294,8 +302,8 @@ useEffect(() => {
 
 **Teclado (pasos 1 y 5):** `alTecla` escucha `keydown` en `window` y, con un
 guard previo (si el foco está en un `INPUT`/`TEXTAREA`/`SELECT` no actúa),
-hace `Ctrl+Z` → `deshacer()`, `Ctrl+Shift+Z` o `Ctrl+Y` → `rehacer()`. Si no
-era un atajo, reenvía al modo del gizmo con **W**=mover, **E**=girar, **R**=escalar.
+hace `Ctrl+Z` → `deshacer()`, `Ctrl+Shift+Z` o `Ctrl+Y` → `rehacer()`. `Ctrl+D`
+→ `duplicarPieza()`. Si no era un atajo, reenvía al modo del gizmo con **W**=mover, **E**=girar, **R**=escalar.
 
 **¿Por qué un solo `useEffect` vacío?** Porque los objetos Three.js no son
 "reactivos". La reactividad entra por la **suscripción al store**
@@ -325,6 +333,21 @@ permite **mover** (W), **girar** (E) y **escalar** (R) la pieza seleccionada.
   modifica la malla y el gizmo la sigue porque está enganchado a ella.
 - Los eventos `mouseDown`/`mouseUp` del gizmo pausan/reanudan `OrbitControls`
   para que la cámara no gire mientras se arrastra un eje.
+- El envío por WebSocket pasa por el throttle de `socket.js`, así que arrastrar
+
+**Duplicar (paso 6).** El botón "Duplicar" (o `Ctrl+D` en el canvas) ejecuta
+`duplicarPieza(key)`, que busca la pieza en `piezasDiseno`, crea una copia con
+`key: claveUnica()`, hereda `nombre/geometria/cantidad/transform`, desplaza la
+posición `+0.5 m` en X para que no quede encima y dispara el click de la
+selección hacia la copia. La acción es discreta: registra un punto de
+deshacer con el estado previo.
+
+**Reflejar X.** `reflejarPieza(key)` espeja la pieza respecto al plano YZ
+(x → −x): el vector posición queda `[-px, py, pz]`, las rotaciones se
+invierten en Y y Z (`[rx, −ry, −rz]`) y la escala no cambia. Al ser un
+operador involutivo (aplicarlo dos veces devuelve la pieza a su pose
+original), la iteración es sencilla de comprender y de "deshacer".
+
 - El envío por WebSocket pasa por el throttle de `socket.js`, así que arrastrar
   el gizmo no satura la red (solo se emite como máximo cada 80 ms por pieza).
 

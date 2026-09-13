@@ -86,6 +86,10 @@ export default function Canvas3D() {
   // solo alimenta el badge de la esquina.
   const [modo, setModo] = useState('translate');
 
+  // Referencia de escala humana (paso 9): visible por defecto y ocultable
+  const [reglaVisible, setReglaVisible] = useState(true);
+  const reglaRef = useRef(null);
+
   useEffect(() => {
     const contenedor = contenedorRef.current;
     if (!contenedor) return undefined;
@@ -285,6 +289,54 @@ export default function Canvas3D() {
 
     const suelo = new THREE.GridHelper(8, 16, 0x8a8a8a, 0x3a3a3a);
     scene.add(suelo);
+
+    // ------------------------------------------------
+    // 3a. REFERENCIA DE ESCALA HUMANA (paso 9)
+    //     Una figura de 1,70 m junto a la máquina para juzgar el tamaño
+    //     real de las piezas. No es una pieza (no se selecciona), se
+    //     puede ocultar con el botón del canvas y mira hacia el centro
+    //     de la escena.
+    // ------------------------------------------------
+    const construirRegla = () => {
+      const grupo = new THREE.Group();
+      const matPiel = new THREE.MeshStandardMaterial({ color: 0xf1c9a5 });
+      const matCamisa = new THREE.MeshStandardMaterial({ color: 0xfa5252 });
+      const matPantalon = new THREE.MeshStandardMaterial({ color: 0x4263eb });
+      const matZapato = new THREE.MeshStandardMaterial({ color: 0x343a40 });
+      const parte = (geo, mat, x, y, z) => {
+        const m = new THREE.Mesh(geo, mat);
+        m.position.set(x, y, z);
+        m.castShadow = true;
+        grupo.add(m);
+        return m;
+      };
+
+      // Piernas (pantalón) + zapatillas
+      parte(new THREE.CylinderGeometry(0.045, 0.045, 0.8, 8), matPantalon, -0.07, 0.4, 0);
+      parte(new THREE.CylinderGeometry(0.045, 0.045, 0.8, 8), matPantalon, 0.07, 0.4, 0);
+      parte(new THREE.CylinderGeometry(0.05, 0.035, 0.08, 8), matZapato, -0.09, 0.04, 0.04);
+      parte(new THREE.CylinderGeometry(0.05, 0.035, 0.08, 8), matZapato, 0.07, 0.04, 0.04);
+
+      // Caderas + torso (camisa)
+      parte(new THREE.BoxGeometry(0.2, 0.1, 0.12), matPantalon, 0, 0.86, 0);
+      parte(new THREE.BoxGeometry(0.28, 0.52, 0.17), matCamisa, 0, 1.17, 0);
+
+      // Brazos (camisa)
+      parte(new THREE.CylinderGeometry(0.035, 0.03, 0.62, 8), matCamisa, -0.23, 1.14, 0);
+      parte(new THREE.CylinderGeometry(0.035, 0.03, 0.62, 8), matCamisa, 0.23, 1.14, 0);
+
+      // Cabeza (piel)
+      parte(new THREE.SphereGeometry(0.1, 16, 12), matPiel, 0, 1.6, 0);
+
+      // Colocación: al lado de la máquina, mirando hacia el origen.
+      grupo.position.set(1.55, 0, 1.3);
+      grupo.rotation.y = Math.atan2(-1.55, -1.3);
+      grupo.visible = true; // el interruptor siguiente la oculta/muestra
+      return grupo;
+    };
+    const regla = construirRegla();
+    reglaRef.current = regla;
+    scene.add(regla);
 
     // ------------------------------------------------
     // 4. RAYCASTER (selección por clic)
@@ -525,6 +577,13 @@ export default function Canvas3D() {
     // La suscripción al store es la que mantiene el 3D actualizado.
   }, []);
 
+  // El botón de la figura humana solo conmuta la visibilidad del grupo.
+  // El grupo se crea una sola vez (en el efecto anterior); aquí NO se
+  // recrea, para no perder materiales ni coste de render.
+  useEffect(() => {
+    if (reglaRef.current) reglaRef.current.visible = reglaVisible;
+  }, [reglaVisible]);
+
   return (
     <div
       ref={contenedorRef}
@@ -537,6 +596,15 @@ export default function Canvas3D() {
         Gizmo: <strong>{NOMBRE_MODO[modo]}</strong> · W mover · E girar · R
         escalar
       </div>
+      {/* Referencia de escala (paso 9): figura humana ocultable */}
+      <label className="regla-toggle" title="Mostrar/ocultar la figura de 1,70 m">
+        <input
+          type="checkbox"
+          checked={reglaVisible}
+          onChange={(e) => setReglaVisible(e.target.checked)}
+        />{' '}
+        Regla de escala (1,70 m)
+      </label>
     </div>
   );
 }

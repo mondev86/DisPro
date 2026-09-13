@@ -12,7 +12,7 @@
 // ============================================================
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, cleanup } from '@testing-library/react';
+import { render, cleanup, fireEvent } from '@testing-library/react';
 
 // ---- MOCK del módulo three (evita WebGL en jsdom) ----
 // Las clases auxiliares se definen DENTRO del factory porque
@@ -64,6 +64,14 @@ vi.mock('three', () => {
     },
     BoxGeometry: Stub,
     CylinderGeometry: Stub,
+    SphereGeometry: Stub,
+    Group: class extends Stub {
+      constructor() {
+        super();
+        this.visible = false;
+      }
+      add() {}
+    },
     MeshStandardMaterial: StubMaterial,
     MeshBasicMaterial: StubMaterial,
     Mesh: class extends Stub {
@@ -322,5 +330,17 @@ describe('Canvas3D (smoke test)', () => {
 
     useStore.getState().rehacer();
     expect(useStore.getState().piezasDiseno[0].transform.position).toEqual([2, 0.5, 0]);
+  });
+
+  it('muestra la referencia de escala humana ocultable (paso 9)', () => {
+    const { container } = render(<Canvas3D />);
+    const toggle = container.querySelector('.regla-toggle input');
+    expect(toggle).toBeTruthy();
+    expect(toggle.checked).toBe(true); // visible por defecto
+
+    fireEvent.click(toggle);
+    expect(toggle.checked).toBe(false);
+    fireEvent.click(toggle);
+    expect(toggle.checked).toBe(true);
   });
 });

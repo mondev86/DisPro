@@ -104,6 +104,14 @@ catálogo resuelto **por nombre exacto** y la primera pieza queda
 seleccionada. Como la carga es una acción discreta, `Ctrl+Z` recupera el
 diseño anterior.
 
+**Referencia de escala humana (paso 9):** junto a la máquina hay una figura
+de **1,70 m** (construida con primitivas Three.js, sin modelos externos) que
+ayuda a juzgar las medidas reales de las piezas. No es una pieza: no se
+selecciona, ni aparece en el outliner, ni en el historial. El interruptor
+"Regla de escala (1,70 m)" en la esquina superior derecha del canvas la
+oculta o la muestra. Las vistas de cámara se centran solo en las piezas, así
+que la figura nunca desvirtúa los encuadres.
+
 ---
 
 ## 3. Archivo a archivo
@@ -460,6 +468,10 @@ un aplicador funciona.
 con slugs únicos), la resolución por nombre contra un catálogo mínimo, el
 no-op cuando no hay fichas, y el selector (render de opciones, carga al elegir
 y petición de confirmación con diseño no vacío).
+
+`src/__tests__/Canvas3D.smoke.test.jsx` añade además (paso 9) la comprobación
+del interruptor de la regla humana: está activo por defecto y se puede
+des/activar sin romper el canvas.
 
 `src/__tests__/Outliner.smoke.test.jsx` (paso 3) verifica el árbol: agrupa por
 categoría (incluido el fallback "Sin categoría"), muestra una fila por pieza y

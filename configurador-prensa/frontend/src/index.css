@@ -189,6 +189,26 @@ body {
 }
 .gizmo-hint strong { color: var(--acento); }
 
+/* Interruptor de la referencia de escala humana (paso 9), arriba a la derecha */
+.regla-toggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(18, 20, 26, 0.85);
+  border: 1px solid var(--borde);
+  font-size: 0.75rem;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+.regla-toggle input { cursor: pointer; }
+
 /* Barra flotante de vistas de cámara (paso 7), esquina inferior derecha */
 .vistas-camara {
   position: absolute;

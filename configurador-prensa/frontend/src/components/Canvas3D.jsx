@@ -31,6 +31,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 import { useStore } from '../store/useStore';
 import { emitirUpdatePiece } from '../socket';
+import { registrarAplicadorVista } from './registroVistas';
 
 // Nombre legible de cada modo del gizmo (para el badge de la esquina)
 const NOMBRE_MODO = { translate: 'Mover', rotate: 'Girar', scale: 'Escalar' };
@@ -114,6 +115,52 @@ export default function Canvas3D() {
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true; // inercia suave
     controls.target.set(0, 1, 0);
+
+    // ------------------------------------------------
+    // 2a. VISTAS DE CÁMARA (paso 7)
+    //     La barra flotante sobre el canvas publica en `registroVistas`.
+    //     Aquí movemos cámara + controles hacia una vista estándar,
+    //     centrada en el centro de masas de las piezas colocadas.
+    // ------------------------------------------------
+    const DISTANCIA_VISTA = 8;
+    const VISTAS = {
+      iso: { vec: [4, 4, 6], up: [0, 1, 0] },
+      frente: { vec: [0, 0, DISTANCIA_VISTA], up: [0, 1, 0] },
+      atras: { vec: [0, 0, -DISTANCIA_VISTA], up: [0, 1, 0] },
+      izquierda: { vec: [-DISTANCIA_VISTA, 0, 0], up: [0, 1, 0] },
+      derecha: { vec: [DISTANCIA_VISTA, 0, 0], up: [0, 1, 0] },
+      arriba: { vec: [0, DISTANCIA_VISTA, 0], up: [0, 0, -1] },
+    };
+    const centroPiezas = () => {
+      const piezas = useStore.getState().piezasDiseno;
+      if (piezas.length === 0) return { x: 0, y: 1, z: 0 }; // coincide con el lookAt inicial
+      const n = piezas.length;
+      const suma = piezas.reduce(
+        (acc, p) => {
+          acc.x += p.transform.position[0];
+          acc.y += p.transform.position[1];
+          acc.z += p.transform.position[2];
+          return acc;
+        },
+        { x: 0, y: 0, z: 0 }
+      );
+      return { x: suma.x / n, y: suma.y / n, z: suma.z / n }; // centro de masas
+    };
+    const aplicarVista = (codigo) => {
+      const vista = VISTAS[codigo];
+      if (!vista) return;
+      const c = centroPiezas();
+      camera.up.set(...vista.up);
+      camera.position.set(
+        c.x + vista.vec[0],
+        c.y + vista.vec[1],
+        c.z + vista.vec[2]
+      );
+      controls.target.set(c.x, c.y, c.z);
+      camera.lookAt(c.x, c.y, c.z);
+      controls.update();
+    };
+    const quitarVista = registrarAplicadorVista(aplicarVista);
 
     // ------------------------------------------------
     // 2b. GIZMO DE TRANSFORMACIÓN (transformación de la pieza activa)
@@ -452,6 +499,7 @@ export default function Canvas3D() {
     // ------------------------------------------------
     return () => {
       unsubscribe();
+      quitarVista(); // paso 7: des-registramos el aplicador de vistas
       window.removeEventListener('resize', alRedimensionar);
       window.removeEventListener('keydown', alTecla);
       transformControls.removeEventListener('objectChange', sincronizarGizmo);

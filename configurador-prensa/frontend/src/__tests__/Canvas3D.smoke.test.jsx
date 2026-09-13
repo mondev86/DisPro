@@ -43,7 +43,14 @@ vi.mock('three', () => {
 
   return {
     Scene: class extends Stub { add() {} remove() {} },
-    PerspectiveCamera: class extends Stub { lookAt() {} updateProjectionMatrix() {} },
+    PerspectiveCamera: class extends Stub {
+      constructor() {
+        super();
+        this.up = { set: vi.fn() };
+      }
+      lookAt() {}
+      updateProjectionMatrix() {}
+    },
     WebGLRenderer: class extends Stub {
       constructor() {
         super();

@@ -88,6 +88,14 @@ plano YZ (x → −x): invierte el signo de la posición en X y de las rotacione
 en Y/Z, dejando la geometría intacta (dos aplicaciones la devuelven a su
 lugar). Ambas acciones registran un punto de deshacer.
 
+**Vistas de cámara (paso 7):** en la esquina inferior derecha del canvas
+hay una barra flotante con las vistas estándar: **Iso**, **Frente**,
+**Atrás**, **Izq.**, **Der.** y **Arriba**. Al pulsarla, la cámara se sitúa
+en esa vista y centra en el centro de masas de las piezas colocadas (si no
+hay piezas, mantiene el foco inicial `(0,1,0)`). La vista "Arriba" gira el
+"up" de la cámara a `-Z` para encuadrar como un plano; las demás usan `+Y`.
+Desde cualquier vista puedes seguir rotando/panear/zoom con el ratón.
+
 ---
 
 ## 3. Archivo a archivo
@@ -166,6 +174,22 @@ Cliente Socket.io. Ver sección 5.
   sincronizan** por el mismo `seleccion`.
 - Cada categoría es un `<details>` plegable; apretar `open` mantiene el árbol
   desplegado por defecto.
+
+### `registroVistas.js` y `VistasCamara.jsx`
+
+Mecanismo de **vistas de cámara** (paso 7), desacoplado para evitar
+dependencias circulares:
+
+- `registroVistas.js` es EL puente: un `Set` de "aplicadores" que cada
+  instancia de `Canvas3D` registra al montar (y elimina al desmontar). Expone
+  `registrarAplicadorVista(fn)` y `aplicarVista(codigo)`.
+- `VistasCamara.jsx` es SOLO consumidor: no sabe nada de three. Renderiza la
+  barra flotante (Iso / Frente / Atrás / Izq. / Der. / Arriba) y al pulsar un
+  botón hace `aplicarVista(codigo)`.
+- El aplicador en `Canvas3D` mueve `camera.position` y `controls.target` al
+  centro de masas de las piezas, ajusta `camera.up` (la vista Arriba usa
+  `(0,0,−1)` para encuadrar como plano) y llama `controls.update()`. No
+  modifica el store: es puramente visual.
 
 ### `Canvas3D.jsx`
 
@@ -400,7 +424,14 @@ misma interfaz ("geometria") — así el Canvas seguirá funcionando igual.
 - Verifica que el componente se monta, muestra `data-testid="canvas3d"` y se
   desmonta sin excepciones.
 - Comprueba que el store expone la configuración de **snapping** con sus valores
-  por defecto y que `setSnapping` la actualiza.
+  por defecto y que `setSnapping` la actualiza. Incluye además los tests de
+  **deshacer/rehacer** (paso 5) y de **duplicar/reflejar** (paso 6) a nivel de
+  lógica del store.
+
+`src/__tests__/VistasCamara.smoke.test.jsx` (paso 7) no toca Three.js: el
+componente está desacoplado vía `registroVistas`. Verifica que renderiza los 6
+botones, que un clic publica el código correcto en el registro y que la baja de
+un aplicador funciona.
 
 `src/__tests__/Outliner.smoke.test.jsx` (paso 3) verifica el árbol: agrupa por
 categoría (incluido el fallback "Sin categoría"), muestra una fila por pieza y

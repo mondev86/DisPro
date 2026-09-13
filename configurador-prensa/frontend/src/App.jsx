@@ -16,6 +16,7 @@ import Catalogo from './components/Catalogo.jsx';
 import Canvas3D from './components/Canvas3D.jsx';
 import Outliner from './components/Outliner.jsx';
 import PanelParametros from './components/PanelParametros.jsx';
+import VistasCamara from './components/VistasCamara.jsx';
 import Disenos from './pages/Disenos.jsx';
 
 import { useStore } from './store/useStore';
@@ -80,6 +81,8 @@ function Configurador() {
           </button>
         </div>
         <Canvas3D />
+        {/* Vistas de cámara (paso 7): barra flotante sobre el canvas */}
+        <VistasCamara />
       </section>
 
       {/* Columna derecha: parámetros de la pieza seleccionada */}

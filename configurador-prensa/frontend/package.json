@@ -15,6 +15,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "lucide-react": "^1.48.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.0",
@@ -24,10 +25,11 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.16.0",
+    "@tailwindcss/vite": "^4.3.3",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.0.1",
     "@vitejs/plugin-react": "^4.3.4",
-"eslint": "^9.16.0",
+    "eslint": "^9.16.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-react": "^7.37.2",
     "eslint-plugin-react-hooks": "^5.0.0",
@@ -35,6 +37,7 @@
     "globals": "^15.13.0",
     "jsdom": "^25.0.1",
     "prettier": "^3.4.1",
+    "tailwindcss": "^4.3.3",
     "vite": "^5.4.11",
     "vitest": "^2.1.8"
   }

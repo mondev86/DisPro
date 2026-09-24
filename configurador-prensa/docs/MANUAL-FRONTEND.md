@@ -513,6 +513,73 @@ proxifica la API — sin CORS ni bases de URL cruzadas.
 
 ---
 
+## 9. Rediseño "cockpit" (README-MEJORAS)
+
+El panel ahora es un **cockpit de ingeniería en modo oscuro** construido con
+**Tailwind CSS v4** (`@tailwindcss/vite`) e iconos de **lucide-react**. La
+paleta y las métricas siguen el documento `README-MEJORAS.md`:
+
+| Concepto        | CSS                  | Significado                              |
+|-----------------|----------------------|------------------------------------------|
+| Fondo / panel   | `--fondo` / `--panel` | `#020617` (slate-950) / `#0f172a`        |
+| Acento          | `--acento`           | `#6366f1` (indigo) — interacción         |
+| Masa total      | `--masa` (cyan)      | peso estimado del diseño en kg           |
+| BOM / coste     | `--bom` (esmeralda)  | importe total de los materiales en €     |
+| Centro de masas | `--cog` (ámbar)      | CoG `[X, Y, Z]` ponderado por peso       |
+| Ergonomía OK    | verde / ámbar        | inclinación del respaldo 35°–50°         |
+
+### Cabecera + telemetría en vivo (`App.jsx`)
+
+- 3 pestañas de navegación (`NavLink`): **Configurador 3D** (`/`), **Diseños &
+  BOM** (`/designs`) y **Mejoras del Proyecto** (`/mejoras`).
+- **Telemetría** calculada con `useTelemetria()`: recorre `piezasDiseno` y cruza
+  `pieceId` con el catálogo (`weightKg`, `priceEur`) para mostrar kg, € y el
+  centro de masas ponderado (`Σ p·w / Σ w`). Se actualiza sola con Zustand.
+- **Deshacer/Rehacer** en la cabecera (`historialPasado/historialFuturo`) y
+  **toasts** de confirmación (`src/toast.js`, pila fija que se autodestruye a
+  los 3,5 s, temp `quitar` al hacer clic).
+
+### Páginas
+
+- `src/pages/Mejoras.jsx` (nueva): resumen del README-MEJORAS con el estado de
+  cada mejora (implementadas/pendientes). Autocontenido, sin red.
+- `src/pages/Disenos.jsx`: ahora con iconos y BOM expandible + botón
+  **Exportar CSV** (sigue usando `getBomCsvUrl(id)` → `/api/machines/:id/bom.csv`).
+
+### Componentes tocados
+
+- `Catalogo.jsx`: **búsqueda** por nombre/material (`useMemo`) y **chips de
+  categoría funcional** (Todos/Estructurales/Mecanismos/Ergonomía/Sujeción) que
+  mapean las categorías internas del catálogo. Botón `+` (lucide `Plus`) por
+  tarjeta.
+- `Outliner.jsx`: badge numérico por categoría y **papelera** por fila
+  (`eliminarPieza`, lucide `Trash2`) sin añadir ningún `<button>` anidado en el
+  `<button>` de la fila (para no romper `getAllByRole('button')` de los tests).
+- `PanelParametros.jsx`: **validador ergonómico** (`Ergonomia`): solo muestra
+  para piezas de categoría `asiento` (o nombre con asiento/respaldo/almohad).
+  Calcula `Math.abs(Math.round((rotation.x * 180) / Math.PI))`; 35°–50° → verde
+  `.ergonomia.ok`, fuera → ámbar `.ergonomia.alerta`. Acciones rápidas con
+  iconos (`Copy`, `FlipHorizontal2`).
+- `Canvas3D.jsx`:
+  - **Centro de masas** (`grupoCog`): esfera ámbar + línea de proyección al
+    suelo (cilindro fino, alto = CoG.y) + disco sobre el plano; se recalcula en
+    `dibujarMallas()` ponderando por `weightKg × cantidad`.
+  - **Captura PNG 2x** (`capturaRef`): sube temporalmente el buffer del canvas
+    (`setSize(w*2, h*2, false)` + `setPixelRatio` 2×), renderiza, descarga con
+    un `<a download>` y restaura. Botón `.btn-captura` en el overlay.
+
+### Dependencias nuevas
+
+```bash
+cd frontend
+npm install lucide-react
+npm install -D @tailwindcss/vite tailwindcss
+```
+
+`vite.config.js` añade `tailwindcss()` al array `plugins`.
+
+---
+
 ## Comandos útiles
 
 ```bash

@@ -6,15 +6,52 @@
 //   1. actualiza el store (local, instantáneo)
 //   2. emite el evento 'updatePiece' por WebSocket (colaboración)
 //
-// TODO(avanzado): aquí irían parámetros de ergonomía (ángulo,
-// recorrido, carga) validados contra reglas de seguridad.
+// Incluye el validador ERGONÓMICO (README-MEJORAS) para asientos y
+// respaldos, y acciones rápidas con iconos (duplicar / reflejar).
 // ============================================================
 
 import { useStore } from '../store/useStore';
 import { emitirUpdatePiece } from '../socket';
+import { Copy, FlipHorizontal2, CheckCircle2, AlertTriangle, Trash2 } from 'lucide-react';
 
 // Un "grupo" de 3 valores con étiquetas de eje (x, y, z)
 const EJES = ['X', 'Y', 'Z'];
+
+// ------------------------------------------------------------
+// Validador ERGONÓMICO (README-MEJORAS):
+// Para asientos/respaldo calcula la inclinación respecto a la
+// vertical (rotación X en grados). 35°–50° → rango biomecánico OK;
+// fuera → alerta ámbar.
+// ------------------------------------------------------------
+function Ergonomia({ pieza, catalogo }) {
+  const ficha = catalogo.find((c) => c.id === pieza.pieceId);
+  const esErgonomico =
+    ficha?.category === 'asiento' ||
+    /asiento|respaldo|almohad/i.test(pieza.nombre || '');
+  if (!esErgonomico) return null;
+
+  const grados = Math.abs(Math.round((pieza.transform.rotation[0] * 180) / Math.PI));
+  const ok = grados >= 35 && grados <= 50;
+
+  return (
+    <div className={`ergonomia ${ok ? 'ok' : 'alerta'}`} data-testid="ergonomia">
+      {ok ? (
+        <CheckCircle2 size={18} style={{ color: 'var(--ok)' }} />
+      ) : (
+        <AlertTriangle size={18} style={{ color: 'var(--alerta)' }} />
+      )}
+      <div className="detalle">
+        <span className="titulo">
+          {ok ? 'Ergonomía válida' : 'Ajuste ergonómico'}
+        </span>
+        <span className="sub">
+          Inclinación del respaldo: <strong>{grados}°</strong> · rango
+          biomecánico recomendado: 35°–50°
+        </span>
+      </div>
+    </div>
+  );
+}
 
 // ------------------------------------------------------------
 // Subcomponente: campo numérico + slider para UN eje
@@ -106,7 +143,7 @@ function ConfigSnapping() {
 // ------------------------------------------------------------
 export default function PanelParametros() {
   // Estado del store que nos interesa
-  const { piezasDiseno, seleccion, eliminarPieza, duplicarPieza, reflejarPieza, deseleccionar, sessionId } =
+  const { piezasDiseno, seleccion, catalogo, eliminarPieza, duplicarPieza, reflejarPieza, deseleccionar, sessionId } =
     useStore();
 
   // Pieza actualmente seleccionada (o null)
@@ -116,7 +153,7 @@ export default function PanelParametros() {
   if (!pieza) {
     return (
       <aside className="panel">
-        <h2>Parámetros</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Parámetros</h2>
         <p className="muted">
           Haz clic sobre una pieza del canvas para editarla. Con el{' '}
           <strong>gizmo</strong> que aparece sobre la pieza seleccionada puedes{' '}
@@ -149,23 +186,36 @@ export default function PanelParametros() {
   };
 
   return (
-    <aside className="panel parametros">
+    <aside className="panel parametros custom-scrollbar">
       <div className="card-pieza seleccionada">
-        <h3>{pieza.nombre}</h3>
-        <small className="muted">
-          Cantidad: para el BOM
-          <input
-            type="number"
-            min="1"
-            value={pieza.cantidad}
-            onChange={(e) => aplicar({ cantidad: Math.max(1, Number(e.target.value)) })}
-          />
-        </small>
-        <p className="muted" style={{ margin: 0 }}>
-          Gizmo activo: <strong>W</strong> mover · <strong>E</strong> girar ·{' '}
-          <strong>R</strong> escalar (en el canvas)
-        </p>
+        <div
+          className="silueta"
+          style={{
+            background: pieza.geometria?.color || '#888',
+            borderRadius: pieza.geometria?.tipo === 'cylinder' ? '50%' : '4px',
+          }}
+        />
+        <div className="card-info">
+          <h3 style={{ margin: 0 }}>{pieza.nombre}</h3>
+          <small className="muted">
+            Cantidad: para el BOM
+            <input
+              type="number"
+              min="1"
+              value={pieza.cantidad}
+              onChange={(e) => aplicar({ cantidad: Math.max(1, Number(e.target.value)) })}
+            />
+          </small>
+        </div>
       </div>
+
+      {/* Validador ergonómico (solo asientos/respaldos) */}
+      <Ergonomia pieza={pieza} catalogo={catalogo} />
+
+      <p className="muted" style={{ margin: 0 }}>
+        Gizmo activo: <strong>W</strong> mover · <strong>E</strong> girar ·{' '}
+        <strong>R</strong> escalar (en el canvas)
+      </p>
 
       <fieldset>
         <legend>Posición (m)</legend>
@@ -214,10 +264,10 @@ export default function PanelParametros() {
         <legend>Acciones</legend>
         <div className="botonera-pieza">
           <button className="btn" onClick={() => duplicarPieza(pieza.key)}>
-            Duplicar (Ctrl+D)
+            <Copy size={14} /> Duplicar (Ctrl+D)
           </button>
           <button className="btn" onClick={() => reflejarPieza(pieza.key)}>
-            Reflejar X
+            <FlipHorizontal2 size={14} /> Reflejar X
           </button>
         </div>
         <p className="muted" style={{ margin: '0.3rem 0 0' }}>
@@ -233,7 +283,7 @@ export default function PanelParametros() {
           className="btn danger"
           onClick={() => eliminarPieza(pieza.key)}
         >
-          Eliminar pieza
+          <Trash2 size={14} /> Eliminar pieza
         </button>
         <button className="btn ghost" onClick={deseleccionar}>
           Deseleccionar

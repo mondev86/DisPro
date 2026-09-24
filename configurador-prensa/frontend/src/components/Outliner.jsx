@@ -22,11 +22,12 @@
 // ============================================================
 
 import { useMemo } from 'react';
+import { FolderOpen, Trash2 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
 export default function Outliner() {
   // El outliner solo LEE el store (y selecciona); no modifica la geometría.
-  const { piezasDiseno, catalogo, seleccion, seleccionarPieza } = useStore();
+  const { piezasDiseno, catalogo, seleccion, seleccionarPieza, eliminarPieza } = useStore();
 
   // Categoría de una pieza colocada: se busca su ficha en el catálogo
   // por identificador de catálogo (pieceId). Fallback seguro.
@@ -62,8 +63,10 @@ export default function Outliner() {
   };
 
   return (
-    <section className="panel outliner" data-testid="outliner">
-      <h2>Diseño</h2>
+    <section className="panel outliner custom-scrollbar" data-testid="outliner">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
+        <FolderOpen size={14} style={{ display: 'inline', color: 'var(--acento)', verticalAlign: 'middle' }} /> Diseño
+      </h2>
       <p className="muted">
         {piezasDiseno.length} {piezasDiseno.length === 1 ? 'pieza colocada' : 'piezas colocadas'} · clic para
         seleccionar
@@ -76,7 +79,8 @@ export default function Outliner() {
           {grupos.map(({ categoria, piezas }) => (
             <details key={categoria} open>
               <summary>
-                {categoria} <span className="muted">({piezas.length})</span>
+                {categoria}
+                <span className="badge-cat">{piezas.length}</span>
               </summary>
               <ul className="arbol-lista">
                 {piezas.map((pieza, i) => (
@@ -96,6 +100,17 @@ export default function Outliner() {
                         {pieza.transform.position
                           .map((v) => Number(v).toFixed(1))
                           .join(', ')}
+                      </span>
+                      {/* Borrado rápido de la pieza seleccionada/fila */}
+                      <span
+                        className="btn-papelera"
+                        aria-label={`Eliminar ${pieza.nombre}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          eliminarPieza(pieza.key);
+                        }}
+                      >
+                        <Trash2 size={13} />
                       </span>
                     </button>
                   </li>

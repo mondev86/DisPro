@@ -32,6 +32,7 @@ import { TransformControls } from 'three/examples/jsm/controls/TransformControls
 import { useStore } from '../store/useStore';
 import { emitirUpdatePiece } from '../socket';
 import { registrarAplicadorVista } from './registroVistas';
+import { Camera } from 'lucide-react';
 
 // Nombre legible de cada modo del gizmo (para el badge de la esquina)
 const NOMBRE_MODO = { translate: 'Mover', rotate: 'Girar', scale: 'Escalar' };
@@ -89,6 +90,10 @@ export default function Canvas3D() {
   // Referencia de escala humana (paso 9): visible por defecto y ocultable
   const [reglaVisible, setReglaVisible] = useState(true);
   const reglaRef = useRef(null);
+
+  // Captura de pantalla (paso moderno): la función se guarda aquí dentro
+  // del efecto (necesita el renderer) y el botón del overlay la invoca.
+  const capturaRef = useRef(null);
 
   useEffect(() => {
     const contenedor = contenedorRef.current;
@@ -339,6 +344,52 @@ export default function Canvas3D() {
     scene.add(regla);
 
     // ------------------------------------------------
+    // 3b. CENTRO DE MASAS + PROYECCIÓN AL SUELO (README-MEJORAS)
+    //     Marcador ámbar en el CoG ponderado por peso de cada pieza,
+    //     con una línea de proyección vertical hasta el suelo y un disco
+    //     que marca el punto sobre el plano. Se actualiza en dibujarMallas.
+    // ------------------------------------------------
+    const materiaCog = new THREE.MeshStandardMaterial({
+      color: 0xfbbf24,
+      emissive: 0xfbbf24,
+      emissiveIntensity: 0.35,
+    });
+    const esferaCog = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 12), materiaCog);
+    const lineaCog = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 1, 8), materiaCog);
+    const discoCog = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.01, 16), materiaCog);
+    const grupoCog = new THREE.Group();
+    grupoCog.add(esferaCog);
+    grupoCog.add(lineaCog);
+    grupoCog.add(discoCog);
+    scene.add(grupoCog);
+    grupoCog.visible = false; // sin piezas no hay centro de masas
+
+    const actualizarCog = () => {
+      const storeCog = useStore.getState();
+      const catCog = new Map(storeCog.catalogo.map((c) => [c.id, c]));
+      let masas = 0;
+      let sx = 0;
+      let sy = 0;
+      let sz = 0;
+      for (const p of storeCog.piezasDiseno) {
+        const peso = (catCog.get(p.pieceId)?.weightKg ?? 1) * (p.cantidad || 1);
+        const [px, py, pz] = p.transform.position;
+        masas += peso;
+        sx += px * peso;
+        sy += py * peso;
+        sz += pz * peso;
+      }
+      grupoCog.visible = storeCog.piezasDiseno.length > 0 && masas > 0;
+      if (!grupoCog.visible) return;
+      const cog = { x: sx / masas, y: sy / masas, z: sz / masas };
+      esferaCog.position.set(cog.x, cog.y, cog.z);
+      const alto = Math.max(cog.y, 0.02); // no invertir la línea si baja del suelo
+      lineaCog.scale.set(1, alto, 1);
+      lineaCog.position.set(cog.x, alto / 2, cog.z);
+      discoCog.position.set(cog.x, 0.006, cog.z);
+    };
+
+    // ------------------------------------------------
     // 4. RAYCASTER (selección por clic)
     // ------------------------------------------------
     const raycaster = new THREE.Raycaster();
@@ -440,10 +491,37 @@ export default function Canvas3D() {
         transformControls.detach();
         transformControls.enabled = false;
       }
+
+      // (d) Centro de masas: se recalcula con cada cambio de piezas
+      actualizarCog();
     };
 
     // Dibujo inicial
     dibujarMallas();
+
+    // ------------------------------------------------
+    // 3c. CAPTURA DE PANTALLA EN ALTA RESOLUCIÓN (render a PNG 2x)
+    //     Sube temporalmente el buffer del canvas (sin tocar el CSS,
+    //     updateStyle=false), renderiza y descarga. Luego restaura.
+    // ------------------------------------------------
+    const capturar = () => {
+      const origen = renderer.domElement;
+      const pr = renderer.getPixelRatio?.() || 1;
+      const w = origen.clientWidth || origen.width;
+      const h = origen.clientHeight || origen.height;
+      renderer.setPixelRatio(pr * 2);
+      renderer.setSize(w * 2, h * 2, false); // buffer 2x, CSS intacto
+      renderer.render(scene, camera);
+      const url = origen.toDataURL('image/png');
+      renderer.setPixelRatio(pr);
+      renderer.setSize(w, h, false);
+      renderer.render(scene, camera);
+      const enlace = document.createElement('a');
+      enlace.href = url;
+      enlace.download = 'diseno-prensa.png';
+      enlace.click();
+    };
+    capturaRef.current = capturar;
 
     // ------------------------------------------------
     // 6. SUSCRIPCIÓN AL STORE: redibuja al cambiar piezas/selección
@@ -605,6 +683,14 @@ export default function Canvas3D() {
         />{' '}
         Regla de escala (1,70 m)
       </label>
+      {/* Captura PNG en alta resolución (README-MEJORAS) */}
+      <button
+        className="btn-captura"
+        onClick={() => capturaRef.current?.()}
+        title="Descargar captura del canvas en alta resolución (PNG 2x)"
+      >
+        <Camera size={14} /> Capturar PNG
+      </button>
     </div>
   );
 }

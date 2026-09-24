@@ -7,6 +7,7 @@
 // ============================================================
 
 import { useEffect, useState } from 'react';
+import { Database, Eye, EyeOff, Download, AlertTriangle } from 'lucide-react';
 import { getDisenos, getBom, getBomCsvUrl } from '../api';
 
 export default function Disenos() {
@@ -40,12 +41,15 @@ export default function Disenos() {
     }
   };
 
-  if (cargando) return <div className="panel"><p>Cargando diseños…</p></div>;
+  if (cargando) return <div className="pagina"><p className="muted">Cargando diseños…</p></div>;
 
   return (
-    <main className="pagina">
-      <h2>Diseños guardados</h2>
-      {error && <p className="error">{error}</p>}
+    <main className="pagina custom-scrollbar">
+      <h2 className="text-base font-semibold flex items-center gap-2">
+        <Database size={16} style={{ color: 'var(--bom)' }} /> Diseños guardados &amp; BOM
+      </h2>
+      <p className="muted">Descarga de materiales (BOM) lista para exportar a CSV.</p>
+      {error && <p className="error flex items-center gap-1"><AlertTriangle size={14} /> {error}</p>}
 
       {disenos.length === 0 ? (
         <p className="muted">
@@ -63,10 +67,11 @@ export default function Disenos() {
                 </small>
               </div>
               <button className="btn" onClick={() => alternarBom(d)}>
+                {bomVisible === d.id ? <EyeOff size={14} /> : <Eye size={14} />}
                 {bomVisible === d.id ? 'Cerrar BOM' : 'Ver BOM'}
               </button>
               <a className="btn ghost" href={getBomCsvUrl(d.id)} title="Descargar BOM en CSV">
-                ⬇ CSV
+                <Download size={14} /> Exportar CSV
               </a>
 
               {/* BOM expandible */}

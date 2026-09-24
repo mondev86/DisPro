@@ -9,10 +9,11 @@
 
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 
 // Configuración usada también por Vitest (clave `test`)
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
 
   server: {
     port: 5173, // puerto del dev server

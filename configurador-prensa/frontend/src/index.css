@@ -230,6 +230,7 @@ body {
 
 /* ---------- Botones ---------- */
 .btn {
+  display: inline-block;
   background: var(--acento);
   color: #fff;
   border: none;

@@ -7,7 +7,7 @@
 // ============================================================
 
 import { useEffect, useState } from 'react';
-import { getDisenos, getBom } from '../api';
+import { getDisenos, getBom, getBomCsvUrl } from '../api';
 
 export default function Disenos() {
   const [disenos, setDisenos] = useState([]);
@@ -65,6 +65,9 @@ export default function Disenos() {
               <button className="btn" onClick={() => alternarBom(d)}>
                 {bomVisible === d.id ? 'Cerrar BOM' : 'Ver BOM'}
               </button>
+              <a className="btn ghost" href={getBomCsvUrl(d.id)} title="Descargar BOM en CSV">
+                ⬇ CSV
+              </a>
 
               {/* BOM expandible */}
               {bomVisible === d.id && bomDatos && (

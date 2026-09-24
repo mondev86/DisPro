@@ -74,4 +74,52 @@ router.get('/:id/bom', async (req, res, next) => {
   }
 });
 
+// ------------------------------------------------------------
+// GET /api/machines/:id/bom.csv — exportar el BOM en CSV descargable
+//
+// El BOM real devuelve { name, material, quantity, weightKg,
+// unitPrice, lineTotal }. Se mantienen alias tolerantes para
+// cualquier otro shape (dbFake o versiones futuras) → todas las
+// columnas acaban rellenas.
+// ------------------------------------------------------------
+router.get('/:id/bom.csv', async (req, res, next) => {
+  try {
+    const bom = await machineService.getBom(req.params.id);
+    if (!bom) return res.status(404).json({ error: 'Diseño no encontrado' });
+    const items = bom.lineas || bom.items || [];
+    const headers = ['Pieza', 'Cantidad', 'Material', 'Masa Unit (kg)', 'Masa Total (kg)', 'Coste Unit (€)', 'Coste Total (€)'];
+
+    // Escapa comillas dobles → CSV válido ("a"b" → """a""b""")
+    const eco = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const num = (v) => Number(v || 0);
+
+    const filas = items.map((item) => {
+      const cantidad = num(item.quantity || item.cantidad || 1);
+      const pesoUnit = num(item.weightKg || item.pesoUnitKg || item.pesoKg || 0);
+      // En el modelo real lineTotal = unitPrice * quantity; solo existe en
+      // ese caso → masa total derivada, si no, alias del shape antiguo.
+      const pesoTotal = item.lineTotal !== undefined ? pesoUnit * cantidad : num(item.pesoTotalKg || 0);
+      const costeUnit = num(item.unitPrice || item.costeUnit || item.costeUnitEur || 0);
+      const costeTotal = num(item.lineTotal || item.costeTotal || item.costeTotalEur || 0);
+      return [
+        eco(item.name || item.nombre || item.pieceName || ''),
+        cantidad,
+        eco(item.material || 'Acero'),
+        pesoUnit.toFixed(2),
+        pesoTotal.toFixed(2),
+        costeUnit.toFixed(2),
+        costeTotal.toFixed(2),
+      ];
+    });
+
+    const contenido = [headers.join(','), ...filas.map((r) => r.join(','))].join('\r\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="BOM-${req.params.id}.csv"`);
+    res.send(contenido);
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

@@ -171,6 +171,7 @@ async function getBom(id) {
       category: row.piece.category,
       material: row.piece.material,
       quantity: row.quantity,
+      weightKg: row.piece.weightKg,
       unitPrice: row.unitPrice,
       lineTotal: row.lineTotal,
     })),

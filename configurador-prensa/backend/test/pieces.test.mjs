@@ -80,3 +80,52 @@ describe('GET /api/pieces', () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe('GET /api/machines/:id/bom.csv — exportar BOM en CSV', () => {
+  let idDiseño;
+
+  beforeAll(async () => {
+    // Guardamos un diseño con las piezas ya sembradas (p1, p2)
+    const creado = await request(app).post('/api/machines').send({
+      sessionId: 'bbbbbbbb-cccc-dddd-eeee-ffff00000001',
+      name: 'Diseño de pruebas CSV',
+      pieces: [
+        { pieceId: 'p1', cantidad: 2, transform: { position: [0, 0, 0] } },
+        { pieceId: 'p2', cantidad: 4, transform: { position: [1, 0, 0] } },
+      ],
+    });
+    expect(creado.status).toBe(201);
+    idDiseño = creado.body.machine?.id || creado.body.id;
+  });
+
+  it('responde 200 con CSV descargable y valores por columnas', async () => {
+    const res = await request(app).get(`/api/machines/${idDiseño}/bom.csv`);
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('text/csv');
+    expect(res.headers['content-disposition']).toContain(`BOM-${idDiseño}.csv`);
+    expect(res.text.startsWith('Pieza,Cantidad,Material,Masa Unit (kg),Masa Total (kg),Coste Unit (€),Coste Total (€)')).toBe(true);
+
+    const lineas = res.text.trim().split('\n');
+    const tubo = lineas.find((l) => l.includes('Tubo cuadrado 60x60x3 (3 m)'));
+    expect(tubo).toBeTruthy();
+    // cantidad 2 · masa total 2×16,9=33,80 · coste total 2×18,5=37,00
+    expect(tubo).toContain('"Tubo cuadrado 60x60x3 (3 m)",2,"Acero estructural S235",16.90,33.80,18.50,37.00');
+  });
+
+  it('escapa las comillas dobles del nombre en el CSV', async () => {
+    const creado = await request(app).post('/api/machines').send({
+      sessionId: 'cccccccc-cccc-dddd-eeee-ffff00000002',
+      name: 'Diseño con comillas',
+      pieces: [{ pieceId: 'p1', cantidad: 1, transform: { position: [0, 0, 0] } }],
+    });
+    const idOtro = creado.body.machine?.id || creado.body.id;
+
+    // Mutamos el nombre de p1 en la BD falsa para forzar comillas
+    const { prisma } = await import('../src/db');
+    prisma._seed.piece[0].name = 'Tubo 60 "XL" (3 m)';
+
+    const res = await request(app).get(`/api/machines/${idOtro}/bom.csv`);
+    expect(res.text).toContain('"Tubo 60 ""XL"" (3 m)"');
+  });
+});

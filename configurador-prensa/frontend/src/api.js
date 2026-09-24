@@ -59,6 +59,9 @@ export const guardarDiseno = (diseno) =>
 export const getDiseno = (id) => peticion(`/api/machines/${id}`);
 export const getBom = (id) => peticion(`/api/machines/${id}/bom`);
 
+// URL de descarga del BOM en CSV (se abre/usa como enlace de descarga)
+export const getBomCsvUrl = (id) => `${BASE_URL}/api/machines/${id}/bom.csv`;
+
 // ------------------------------------------------------------
 // Autenticación (opcional)
 // ------------------------------------------------------------
